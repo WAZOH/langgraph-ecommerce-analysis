@@ -58,6 +58,7 @@ class AgentState(TypedDict):
     prompt: str
     product: str
     market: str
+    market_code: str
     next_action: str
     turn: int
     last_reasoning: str
@@ -193,6 +194,7 @@ def run_analysis(prompt: str) -> dict:
         "prompt":         prompt,
         "product":        "",
         "market":         "",
+        "market_code":    "",
         "next_action":    "",
         "turn":           0,
         "last_reasoning": "",

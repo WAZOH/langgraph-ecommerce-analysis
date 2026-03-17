@@ -18,6 +18,23 @@ def _fallback_extract_from_prompt(prompt: str) -> str:
     return " ".join(words[:3]) if words else "unknown product"
 
 
+def _fallback_market_code(market: str) -> str:
+    """Converts a market string to a 2-letter ISO country code. Used when Gemini is unavailable."""
+    m = market.lower()
+    codes = {
+        "canada": "CA", "canadian": "CA",
+        "usa": "US", "united states": "US", "american": "US",
+        "france": "FR", "french": "FR",
+        "uk": "GB", "britain": "GB", "united kingdom": "GB",
+        "germany": "DE", "australia": "AU", "japan": "JP",
+        "mexico": "MX", "brazil": "BR", "spain": "ES", "italy": "IT",
+    }
+    for keyword, code in codes.items():
+        if keyword in m:
+            return code
+    return "US"
+
+
 def _fallback_extract_market_from_prompt(prompt: str) -> str:
     """
     Extraction basique du marche/pays depuis le prompt.

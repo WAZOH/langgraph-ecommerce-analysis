@@ -59,6 +59,14 @@
       text-transform: uppercase; letter-spacing: .8px;
       color: var(--muted); margin-bottom: 14px;
     }
+    .card-subtitle {
+      font-size: 9px; 
+      font-weight: 500;
+      text-transform: uppercase; 
+      letter-spacing: .8px;
+      color: var(--muted); 
+      margin-top: 12px;
+    }
 
     textarea#prompt-input {
       width: 100%;
@@ -79,7 +87,8 @@
     .prompt-footer {
       display: flex; align-items: center;
       justify-content: space-between;
-      margin-top: 12px; gap: 12px; flex-wrap: wrap;
+      /* margin-top: 12px;  */
+      gap: 12px; flex-wrap: wrap;
     }
     .chips { display: flex; gap: 8px; flex-wrap: wrap; }
     .chip {
@@ -176,10 +185,10 @@
     /* Score hero */
     .score-hero { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
     .score-val  { font-size: 56px; font-weight: 900; font-family: monospace; line-height: 1; }
-    .score-sub  { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; max-width: 240px; }
+    .score-sub  { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
 
     /* Gauge */
-    .gauge-svg { width: 170px; height: 95px; overflow: visible; flex-shrink: 0; }
+    /* .gauge-svg { width: 170px; height: 95px; overflow: visible; flex-shrink: 0; } */
 
     /* Pill badges */
     .pill        { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 6px; }
@@ -293,6 +302,18 @@
 
     .hidden { display: none !important; }
 
+    .btn-icon {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-icon:hover { color: var(--text); border-color: var(--blue); }
+
     @media (max-width: 580px) {
       .grid-2    { grid-template-columns: 1fr; }
       .sent-grid { grid-template-columns: 1fr; }
@@ -318,13 +339,22 @@
     <div class="card-title">Votre demande d'analyse</div>
     <textarea id="prompt-input" rows="3"
       placeholder="Ex : Analyse le marché canadien pour les écouteurs Sony WH-1000XM5. Je veux savoir si c'est le bon moment pour lancer une boutique Shopify."></textarea>
-    <div class="prompt-footer">
+    <div class="card-subtitle">Exemples</div>
+      <div class="prompt-footer">
       <div class="chips">
         <div class="chip" onclick="useExample(this)">iPhone 17 Pro Max 256 GB · Canada</div>
-        <div class="chip" onclick="useExample(this)">Dyson Vacuum V16 · France</div>
+        <div class="chip" onclick="useExample(this)">Playstation 5 Digital · France</div>
         <div class="chip" onclick="useExample(this)">Nintendo Switch OLED · USA</div>
       </div>
-      <button class="btn" id="run-btn" onclick="run()">Analyser →</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-icon hidden" id="refresh-btn" onclick="location.reload()" title="Recommencer">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.418A6 6 0 1 1 8 2v1z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+          </svg>
+        </button>
+        <button class="btn" id="run-btn" onclick="run()">Analyser →</button>
+      </div>
     </div>
   </div>
 
@@ -363,8 +393,8 @@ const API = 'http://localhost:8000';
 const EXAMPLES = {
   'iPhone 17 Pro Max 256 GB · Canada':
     "Analyse le marché canadien pour l'iPhone 17 Pro Max 256 GB. Est-ce une bonne opportunité de revente sur Amazon ?",
-  'Dyson Vacuum V16 · France':
-    "Analyse le marché français pour le Dyson Vacuum V16. Est-ce que je devrais m'ouvrir une boutique sur Shopify pour vendre ce produit ?",
+  'Playstation 5 Digital · France':
+    "Analyse le marché français pour la Playstation 5 Digital Edition. Est-ce que je devrais m'ouvrir une boutique sur Shopify pour vendre ce produit ?",
   'Nintendo Switch OLED · USA':
     "Je veux lancer un business de revente de Nintendo Switch OLED aux États-Unis. Analyse le marché et dis-moi si c'est viable.",
 };
@@ -414,7 +444,9 @@ function onEvent(ev) {
       if (ev.reasoning)
         tlog(`<span class="t-ts">      </span><span class="t-dim">  └ ${ev.reasoning}</span>`);
       if (ev.product && ev.turn === 1)
-        tlog(`<span class="t-ts">      </span><span class="t-dim">  └ Produit : <span class="t-val">${ev.product}</span> · Marché : <span class="t-val">${ev.market}</span></span>`);
+        tlog(`<span class="t-ts">      </span><span class="t-dim">  └ Produit : <span class="t-val">${ev.product}</span> · Marché : <span class="t-val">${ev.market}</span> · Code pays : <span class="t-val">${ev.market_code}</span></span>`);
+      if (ev.next_action === 'node_report')
+        tlog(`<span class="t-icon">📋</span><span class="t-warn"> Génération du rapport en cours…</span><span class="t-dim" id="report-spinner"> — Gemini analyse les données ⏳</span>`);
     }
     else if (ev.node === 'node_scraper')
       tlog(`<span class="t-icon">${icon}</span> <span class="t-node">[scraper]</span><span class="t-dim"> ${ev.count} prix collectés · source : <span class="t-val">${ev.source}</span></span>`);
@@ -423,6 +455,8 @@ function onEvent(ev) {
     else if (ev.node === 'node_trends')
       tlog(`<span class="t-icon">${icon}</span> <span class="t-node">[trends]</span><span class="t-dim"> ${ev.count} insights · source : <span class="t-val">${ev.source}</span></span>`);
     else if (ev.node === 'node_report') {
+      const spinner = document.getElementById('report-spinner');
+      if (spinner) spinner.remove();
       const srcLabel = ev.source === 'gemini' ? 'Gemini' : ev.source === 'rule_based' ? 'rule-based' : ev.source;
       const tools = (ev.tools_used || []).join(', ') || '—';
       tlog(`<span class="t-icon">${icon}</span> <span class="t-node">[report]</span><span class="t-dim"> génération du rapport… source : <span class="t-val">${srcLabel}</span></span>`);
@@ -432,6 +466,7 @@ function onEvent(ev) {
   else if (ev.type === 'complete') {
     tlog(`<span class="t-icon">✅</span><span class="t-ok"> Analyse terminée en ${((Date.now()-t0)/1000).toFixed(1)}s</span>`);
     renderDashboard(ev.report);
+    document.getElementById('refresh-btn').classList.remove('hidden');
   }
   else if (ev.type === 'error') {
     tlog(`<span class="t-icon">❌</span><span class="t-err"> ${ev.message}</span>`);
@@ -542,17 +577,21 @@ function renderDashboard(report) {
     </div>`;
   }
 
-  // ── Row 1: Pricing chart + Sentiment
-  const row1 = [];
-  if (ins.pricing)   row1.push(renderPricingChart(ins.pricing, report.data_raw?.prices || []));
-  if (ins.sentiment) row1.push(renderSentimentCard(ins.sentiment));
-  if (row1.length) html += `<div class="grid-2">${row1.join('')}</div>`;
+  // ── Pricing (full width) — fallback sur data_raw.prices si ins.pricing absent
+  const rawPrices = report.data_raw?.prices || [];
+  const pricingData = ins.pricing ?? (() => {
+    const vals = rawPrices.map(p => p.price).filter(v => typeof v === 'number');
+    if (!vals.length) return null;
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return { min: Math.min(...vals), max: Math.max(...vals), average: Math.round(avg * 100) / 100 };
+  })();
+  if (pricingData) html += renderPricingChart(pricingData, rawPrices);
 
-  // ── Row 2: Trends sparkline + Competitive
-  const row2 = [];
-  if (ins.trends) row2.push(renderTrendsCard(ins.trends));
-  if (ins.competitive_analysis?.key_players?.length) row2.push(renderCompetitive(ins.competitive_analysis, report.data_raw?.prices || []));
-  if (row2.length) html += `<div class="grid-2">${row2.join('')}</div>`;
+  // ── Row 1: Sentiment + Trends
+  const row1 = [];
+  if (ins.sentiment) row1.push(renderSentimentCard(ins.sentiment));
+  if (ins.trends) row1.push(renderTrendsCard(ins.trends));
+  if (row1.length) html += `<div class="grid-2">${row1.join('')}</div>`;
 
   // ── Opportunities + Risks as tag clouds
   const hasOpps  = ins.opportunities?.length;
@@ -623,20 +662,17 @@ function renderScoreHero(score, expl, summary) {
   const color = score >= 7 ? 'var(--green)' : score >= 5 ? 'var(--yellow)' : 'var(--red)';
   const label = score >= 7 ? 'Marché favorable' : score >= 5 ? 'Marché mitigé' : 'Marché défavorable';
   const pillC = score >= 7 ? 'pill-pos' : score >= 5 ? 'pill-neu' : 'pill-neg';
-  const arc   = arcPath(score);
   return `
     <div class="card" style="margin-bottom:14px">
       <div class="score-hero">
         <div>
           <div class="card-title">Score de marché</div>
-          <div class="score-val" style="color:${color}">${score}<span style="font-size:20px;color:var(--muted)">/10</span></div>
-          <span class="pill ${pillC}">${label}</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;text-align:center">
+            <div class="score-val" style="color:${color}">${score}<span style="font-size:20px;color:var(--muted)">/10</span></div>
+            <span class="pill ${pillC}">${label}</span>
+          </div>
           ${expl ? `<div class="score-sub">${esc(expl)}</div>` : ''}
         </div>
-        <svg class="gauge-svg" viewBox="0 0 200 105">
-          <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="#30363d" fill="none" stroke-width="14" stroke-linecap="round"/>
-          ${score > 0 ? `<path d="M 20 100 A 80 80 0 0 1 180 100" stroke="${color}" fill="none" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - score * 10}"/>` : ''}
-        </svg>
       </div>
       ${summary ? `<div style="font-size:14px;color:var(--muted);margin-top:14px;padding-top:14px;border-top:1px solid var(--border);line-height:1.6">${esc(summary)}</div>` : ''}
     </div>`;
@@ -653,25 +689,25 @@ function renderPricingChart(p, rawPrices) {
   ].filter(d => d.val != null);
 
   const maxVal = Math.max(...bars.map(d => d.val)) || 1;
-  const W = 240, barH = 88, barW = 44, gap = 16;
+  const W = 240, barH = 52, barW = 36, gap = 14, topPad = 14;
   const totalW = bars.length * barW + (bars.length - 1) * gap;
   const startX = (W - totalW) / 2;
 
   const rects = bars.map((d, i) => {
     const h  = Math.max(6, (d.val / maxVal) * barH);
     const x  = startX + i * (barW + gap);
-    const y  = barH - h;
+    const y  = topPad + (barH - h);
     const lx = x + barW / 2;
     return `
       <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="5" fill="${d.color}" opacity="0.82"/>
       <text x="${lx}" y="${y - 5}" text-anchor="middle" fill="${d.color}" font-size="9.5" font-family="monospace" font-weight="700">$${Number(d.val).toFixed(0)}</text>
-      <text x="${lx}" y="106" text-anchor="middle" fill="#8b949e" font-size="10">${d.label}</text>`;
+      <text x="${lx}" y="${topPad + barH + 16}" text-anchor="middle" fill="#8b949e" font-size="10">${d.label}</text>`;
   }).join('');
 
   return `
-    <div class="card">
+    <div class="card" style="margin-bottom:14px">
       <div class="card-title">Analyse des prix</div>
-      <svg viewBox="0 0 ${W} 114" style="width:100%;display:block;margin:4px 0 8px">${rects}</svg>
+      <svg viewBox="0 0 ${W} ${topPad + barH + 24}" style="width:100%;display:block;margin:4px 0 8px">${rects}</svg>
       ${buildRetailerRows(rawPrices, p.max)}
       ${(p.recommendation_reason || p.rationale)
         ? `<div style="font-size:12px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border)">${esc(p.recommendation_reason || p.rationale)}</div>`
@@ -726,7 +762,7 @@ function renderSentimentCard(s) {
   return `
     <div class="card">
       <div class="card-title">Sentiment client</div>
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+      <div style="justify-content: center;display:flex;align-items:center;gap:16px;margin-bottom:10px">
         ${nps != null
           ? `<div style="font-size:46px;font-weight:900;font-family:monospace;line-height:1;color:${color};flex-shrink:0">${nps}<span style="font-size:14px;color:var(--muted)">/10</span></div>`
           : ''}

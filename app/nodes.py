@@ -26,7 +26,8 @@ import google.generativeai as genai
 from app.config import cfg
 from app.tools import fetch_scraper, fetch_sentiment, fetch_trends
 from app.fallbacks import (
-    _fallback_extract_from_prompt, _fallback_extract_market_from_prompt, _fallback_rule_based_insights
+    _fallback_extract_from_prompt, _fallback_extract_market_from_prompt,
+    _fallback_market_code, _fallback_rule_based_insights,
 )
 
 log = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ def node_orchestrator(state: dict) -> dict:
     Output : {
         "product":          str, # extrait du prompt (tour 1 seulement, lorsque turn==0)
         "market":           str, # extrait du prompt (tour 1 seulement, lorsque turn==0)
+        "market_code":      str, # code ISO 3166-1 alpha-2 du pays, ex: "US", "CA", "FR" (tour 1 seulement, lorsque turn==0)
         "next_action":      str, # "node_scraper" | "node_sentiment" | "node_trends" | "node_report"
         "turn":             int, # +1 à chaque tour
         "last_reasoning":   str, # Explicitation de la decision prise à ce tour (courte phrase)
@@ -68,9 +70,11 @@ def node_orchestrator(state: dict) -> dict:
         try:
             decision = _gemini_orchestrate(state)
             log.info(f"[node_orchestrator] Decision : {decision['next_action']} — {decision['last_reasoning']}")
+            market = decision.get("market", state.get("market", ""))
             return {
                 "product":          decision.get("product", state.get("product", "")),
-                "market":           decision.get("market", state.get("market", "")),
+                "market":           market,
+                "market_code":        decision.get("market_code", state.get("market_code", _fallback_market_code(market))),
                 "next_action":      decision["next_action"],
                 "last_reasoning":   decision["last_reasoning"],
                 "turn":             turn + 1,
@@ -83,14 +87,16 @@ def node_orchestrator(state: dict) -> dict:
     # Au tour 0, on extrait quand meme product/market du prompt
     product = state.get("product") or _fallback_extract_from_prompt(state.get("prompt", ""))
     market  = state.get("market")  or _fallback_extract_market_from_prompt(state.get("prompt", ""))
+    market_code = state.get("market_code") or _fallback_market_code(market)
     fallback_plan = ["scraper", "sentiment", "trends", "report"]
     next_action = fallback_plan[min(turn, len(fallback_plan) - 1)]
     return {
-        "product":     product,
-        "market":      market,
-        "next_action": next_action,
-        "last_reasoning":   f"Fallback plan — step {turn + 1}",
-        "turn":        turn + 1,
+        "product":        product,
+        "market":         market,
+        "market_code":      market_code,
+        "next_action":    next_action,
+        "last_reasoning": f"Fallback plan — step {turn + 1}",
+        "turn":           turn + 1,
     }
 
 
@@ -129,7 +135,8 @@ def _gemini_orchestrate(state: dict) -> dict:
             Respond with ONLY a valid JSON object:
             {{
                 "product":        "<extracted product name>",
-                "market":         "<extracted market/country, default Canada>",
+                "market":         "<English country/region name for SerpApi location, e.g. Canada, United States, France — NOT a description>",
+                "market_code":      "<ISO 3166-1 alpha-2 country code, e.g. CA, US, FR, GB>",
                 "next_action":    "<node_scraper|node_sentiment|node_trends>",
                 "last_reasoning": "<une phrase en français : pourquoi cet outil en premier>"
             }}
@@ -153,6 +160,8 @@ def _gemini_orchestrate(state: dict) -> dict:
 
             Rules:
             - If turn >= {MAX_TURNS}, you MUST choose "node_report".
+            - "node_sentiment" returns at most ~7 reviews — this is a platform limit, not an error. 7 reviews is sufficient for sentiment analysis; do NOT call it again.
+            - "node_trends" returns at most ~5 insights — this is a platform limit, not an error. 5 insights is sufficient for trend analysis; do NOT call it again.
 
             IMPORTANT: Write ALL text fields (last_reasoning, etc.) in French.
 
@@ -242,10 +251,10 @@ def node_scraper(state: dict) -> dict:
     if result := _check_exhausted(state, "scraper", "scraper_data"):
         return result
 
-    log.info(f"[node_scraper] Produit: {state['product']} / Marche: {state['market']}")
-    result = fetch_scraper(state["product"], state["market"])
+    log.info(f"[node_scraper] Produit: {state['product']} / Marche: {state['market']} / Market code: {state.get('market_code', 'CA')}")
+    result = fetch_scraper(state["product"], state["market"], state.get("market_code", "CA"))
     result["data"] = result["data"][:cfg.max_serp_results]
-    log.info(f"[node_scraper] {len(result['data'])} résultats collectés")
+    log.info(f"[node_scraper] {len(result['data'])} résultats collectés. Source: {result['source']}")
     return {"scraper_data": result}
 
 
@@ -265,9 +274,9 @@ def node_sentiment(state: dict) -> dict:
         return result
 
     log.info(f"[node_sentiment] {state['product']} / {state['market']}")
-    result = fetch_sentiment(state["product"], state["market"])
+    result = fetch_sentiment(state["product"], state["market"], state.get("market_code", "CA"))
     result["data"] = result["data"][:cfg.max_serp_results]
-    log.info(f"[node_sentiment] {len(result['data'])} reviews collectées")
+    log.info(f"[node_sentiment] {len(result['data'])} reviews collectées. Source: {result['source']}")
     return {"sentiment_data": result}
 
 
@@ -286,9 +295,9 @@ def node_trends(state: dict) -> dict:
     if result := _check_exhausted(state, "trends", "trends_data"):
         return result
 
-    log.info(f"[node_trends] {state['product']} / {state['market']}")
-    result = fetch_trends(state["product"], state["market"])
-    log.info(f"[node_trends] {len(result['data'])} insights collectés")
+    log.info(f"[node_trends] {state['product']} / {state['market']} ({state.get('market_code', 'CA')})")
+    result = fetch_trends(state["product"], state["market"], state.get("market_code", "CA"))
+    log.info(f"[node_trends] {len(result['data'])} insights collectés. Source: {result['source']}")
     return {"trends_data": result}
 
 

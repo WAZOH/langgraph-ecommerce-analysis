@@ -121,6 +121,7 @@ def analyze_stream(request: AnalyzeRequest):
             "prompt":         request.prompt,
             "product":        "",
             "market":         "",
+            "market_code":    "",
             "next_action":    "",
             "turn":           0,
             "last_reasoning": "",
@@ -143,6 +144,7 @@ def analyze_stream(request: AnalyzeRequest):
                     if node_name == "node_orchestrator":
                         event["product"]     = state_update.get("product", "")
                         event["market"]      = state_update.get("market", "")
+                        event["market_code"] = state_update.get("market_code", "")
                         event["next_action"] = state_update.get("next_action", "")
                         event["reasoning"]   = state_update.get("last_reasoning", "")
                         event["turn"]        = state_update.get("turn", 0)
