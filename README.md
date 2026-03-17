@@ -107,12 +107,12 @@ docker compose up --build
 
 Il y a 3 manières d'utiliser l'app :
 
-1. Aller sur `http://localhost:8000` pour voir l'interface utilisateur.
+1. Option 1: Aller sur `http://localhost:8000` pour voir l'interface utilisateur.
 ![Interface utilisateur](index_screenshot.png)
 
-2. Utiliser l'interface interactive Swagger `http://localhost:8000/docs#/Analysis/analyze_analyze_post`.
+2. Option 2: Utiliser l'interface interactive Swagger `http://localhost:8000/docs#/Analysis/analyze_analyze_post`.
 
-3. Utiliser dans un terminal:
+3. Option 3: Utiliser dans un terminal:
 
 ```bash
 # Vérifier que le service tourne
