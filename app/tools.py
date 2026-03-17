@@ -15,12 +15,46 @@ que les donnees viennent de la vraie API ou du mock :
 """
 
 import logging
+from functools import lru_cache
+
 from app.config import cfg
 from app.fallbacks import (
     _fallback_mock_scraper, _fallback_mock_sentiment, _fallback_mock_trends,
 )
 
 log = logging.getLogger(__name__)
+
+
+# -------------------------------------------------
+# SHARED  (SerpApi Google Shopping — cached)
+# -------------------------------------------------
+
+# Décorateur Least Recently used = Efface les résultats les plus anciens du cache. 
+# Garde en mémoire les résultats des 32 dernières combinaisons d'arguments différentes.
+# L'idée est de réutiliser les résultats de Google Shopping entre scraper et reviews, qui font tous les deux appel à la même API 
+# et peuvent être lancés dans n'importe quel ordre selon la décision de l'orchestrateur.
+@lru_cache(maxsize=32)
+def _fetch_shopping_raw(product: str, market: str) -> tuple:
+    """
+    Appel Google Shopping partage entre scraper et reviews.
+    Mis en cache par (product, market) pour eviter les appels API dupliques
+    dans le meme pipeline run.
+    Retourne un tuple de dicts (immuable, safe pour le cache).
+    """
+    from serpapi import GoogleSearch
+
+    results = GoogleSearch({
+        "engine":   "google_shopping",
+        "q":        product,
+        "location": market,
+        "hl":       "en",
+        "api_key":  cfg.serpapi_key,
+        "num":      cfg.max_serp_results,
+    }).get_dict()
+
+    shopping = results.get("shopping_results", [])
+    log.info(f"[google_shopping] {len(shopping)} résultats pour '{product}' / '{market}' (cache miss)")
+    return tuple(shopping)
 
 
 # -------------------------------------------------
@@ -43,22 +77,10 @@ def fetch_scraper(product: str, market: str) -> dict:
 
 
 def _serpapi_scraper(product: str, market: str) -> dict:
-    from serpapi import GoogleSearch
-
-    country = "ca" if "canada" in market.lower() else "us"
-    num     = cfg.max_serp_results
-
-    results = GoogleSearch({
-        "engine":  "google_shopping",
-        "q":       product,
-        "gl":      country,
-        "hl":      "en",
-        "api_key": cfg.serpapi_key,
-        "num":     num,
-    }).get_dict()
+    shopping_results = list(_fetch_shopping_raw(product, market))
 
     items = []
-    for r in results.get("shopping_results", []):
+    for r in shopping_results:
         raw = r.get("price", "").replace("$", "").replace(",", "").strip()
         try:
             items.append({
@@ -80,47 +102,55 @@ def _serpapi_scraper(product: str, market: str) -> dict:
 # SENTIMENT  (SerpApi Google Shopping Reviews)
 # -------------------------------------------------
 
-def fetch_sentiment(product: str) -> dict:
+def fetch_sentiment(product: str, market: str = "") -> dict:
     """
     Recupere les avis Google Shopping pour le produit via SerpApi.
     Retourne une liste de strings (titres + extraits de reviews).
+    market est optionnel — permet de reutiliser le cache Google Shopping
+    partage avec fetch_scraper si le meme market est passe.
     Fallback mock si la cle SerpApi est absente ou si une erreur survient.
     """
     if cfg.has_serpapi():
         try:
-            return _serpapi_reviews(product)
+            return _serpapi_reviews(product, market)
         except Exception as e:
             log.warning(f"SerpApi reviews fetch failed ({e}), using mock.")
 
     return _fallback_mock_sentiment(product)
 
 
-def _serpapi_reviews(product: str) -> dict:
+def _serpapi_reviews(product: str, market: str) -> dict:
     from serpapi import GoogleSearch
 
-    # Étape 1 : collecter tous les page_tokens du produit sur Google Shopping
-    shopping = GoogleSearch({
-        "engine":  "google_shopping",
-        "q":       product,
-        "hl":      "en",
-        "api_key": cfg.serpapi_key,
-        "num":     cfg.max_serp_results,
-    }).get_dict()
+    # Étape 1 : réutilise le cache Google Shopping (zéro appel API si scraper déjà exécuté)
+    shopping_results = list(_fetch_shopping_raw(product, market))
+
+    top_results = sorted(
+        shopping_results,
+        key=lambda r: r.get("reviews", 0),
+        reverse=True,
+    )[:cfg.max_serp_results]
 
     page_tokens = [
         r["immersive_product_page_token"]
-        for r in shopping.get("shopping_results", [])
+        for r in top_results
         if r.get("immersive_product_page_token")
     ]
+
+    log.info(f"[Serpapi] {len(page_tokens)} page_token(s) trouvés pour '{product}'")
 
     if not page_tokens:
         log.warning(f"[Serpapi] Aucun page_token trouvé pour '{product}' — Fallback aux données mock.")
         return _fallback_mock_sentiment(product)
 
-    # Étape 2 : récupérer les avis pour chaque page_token et concaténer tous les avis uniques
+    # Étape 2 : récupérer les avis pour chaque page_token
+    # Note : google_immersive_product ne supporte pas la pagination des reviews (~7 max par produit).
+    # On compense en scannant jusqu'à 10 produits différents.
     all_reviews = []
     seen = set()
-    for token in page_tokens[:5]:  # limite à 5 appels API max
+    for token in page_tokens[:10]:
+        if len(all_reviews) >= cfg.max_serp_results:
+            break
         result = GoogleSearch({
             "engine":     "google_immersive_product",
             "page_token": token,
@@ -135,7 +165,7 @@ def _serpapi_reviews(product: str) -> dict:
                 seen.add(text)
                 all_reviews.append(text)
 
-    log.info(f"[Serpapi] {len(all_reviews)} reviews uniques collectées sur {len(page_tokens[:5])} produits scannés.")
+    log.info(f"[Serpapi] {len(all_reviews)} reviews uniques collectées sur {min(len(page_tokens), 10)} produits scannés.")
 
     if not all_reviews:
         log.warning(f"[Serpapi] Aucun user_reviews trouvé — Fallback aux données mock.")

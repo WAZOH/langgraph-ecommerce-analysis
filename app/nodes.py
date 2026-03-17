@@ -209,6 +209,24 @@ def _summarize_collected(state: dict) -> str:
 
 
 # -------------------------------------------------
+# HELPER
+# -------------------------------------------------
+
+def _check_exhausted(state: dict, tool_name: str, data_key: str) -> dict | None:
+    """
+    Si des données existent déjà pour cet outil, le marqué comme épuisé
+    et retourne le dict de mise à jour. Sinon retourne None.
+    """
+    if not state.get(data_key, {}).get("data"):
+        return None
+    log.info(f"[{tool_name}] Données déjà collectées — outil marqué comme épuisé.")
+    exhausted = list(state.get("exhausted_tools", []))
+    if tool_name not in exhausted:
+        exhausted.append(tool_name)
+    return {"exhausted_tools": exhausted}
+
+
+# -------------------------------------------------
 # NODE SCRAPER
 # -------------------------------------------------
 
@@ -221,25 +239,14 @@ def node_scraper(state: dict) -> dict:
     Input  : state["product"], state["market"]
     Output : {"scraper_data": {"source": ..., "data": [...]}}
     """
-    existing = state.get("scraper_data", {}).get("data", [])
-    extra    = len(existing)
+    if result := _check_exhausted(state, "scraper", "scraper_data"):
+        return result
 
-    log.info(f"[node_scraper] Produit: {state['product']} / Marche: {state['market']} "
-             f"(existing={extra})")
-    result    = fetch_scraper(state["product"], state["market"])
-    merged    = _clean_duplicate_results(existing, result, key=lambda r: (r["source"], r["price"]))
-    merged["data"] = merged["data"][:cfg.max_serp_results]
-    new_count = len(merged["data"]) - extra
-    log.info(f"[node_scraper] {extra} existants + {new_count} nouveaux = {len(merged['data'])} total")
-
-    updates = {"scraper_data": merged}
-    if new_count == 0 and existing:
-        exhausted = list(state.get("exhausted_tools", []))
-        if "scraper" not in exhausted:
-            exhausted.append("scraper")
-            log.info("[node_scraper] Aucun nouveau résultat — outil marqué comme épuisé.")
-        updates["exhausted_tools"] = exhausted
-    return updates
+    log.info(f"[node_scraper] Produit: {state['product']} / Marche: {state['market']}")
+    result = fetch_scraper(state["product"], state["market"])
+    result["data"] = result["data"][:cfg.max_serp_results]
+    log.info(f"[node_scraper] {len(result['data'])} résultats collectés")
+    return {"scraper_data": result}
 
 
 # -------------------------------------------------
@@ -254,23 +261,14 @@ def node_sentiment(state: dict) -> dict:
     Input  : state["product"]
     Output : {"sentiment_data": {"source": ..., "data": [...]}}
     """
-    existing = state.get("sentiment_data", {}).get("data", [])
+    if result := _check_exhausted(state, "sentiment", "sentiment_data"):
+        return result
 
-    log.info(f"[node_sentiment] {state['product']} (existing={len(existing)})")
-    result   = fetch_sentiment(state["product"])
-    merged   = _clean_duplicate_results(existing, result)
-    merged["data"] = merged["data"][:cfg.max_serp_results]
-    new_count = len(merged["data"]) - len(existing)
-    log.info(f"[node_sentiment] {len(existing)} existants + {new_count} nouveaux = {len(merged['data'])} total")
-
-    updates = {"sentiment_data": merged}
-    if new_count == 0 and existing:
-        exhausted = list(state.get("exhausted_tools", []))
-        if "sentiment" not in exhausted:
-            exhausted.append("sentiment")
-            log.info("[node_sentiment] Aucun nouveau résultat — outil marqué comme épuisé.")
-        updates["exhausted_tools"] = exhausted
-    return updates
+    log.info(f"[node_sentiment] {state['product']} / {state['market']}")
+    result = fetch_sentiment(state["product"], state["market"])
+    result["data"] = result["data"][:cfg.max_serp_results]
+    log.info(f"[node_sentiment] {len(result['data'])} reviews collectées")
+    return {"sentiment_data": result}
 
 
 # -------------------------------------------------
@@ -285,22 +283,13 @@ def node_trends(state: dict) -> dict:
     Input  : state["product"], state["market"]
     Output : {"trends_data": {"source": ..., "data": [...]}}
     """
-    existing = state.get("trends_data", {}).get("data", [])
+    if result := _check_exhausted(state, "trends", "trends_data"):
+        return result
 
-    log.info(f"[node_trends] {state['product']} (existing={len(existing)})")
-    result    = fetch_trends(state["product"], state["market"])
-    merged    = _clean_duplicate_results(existing, result)
-    new_count = len(merged["data"]) - len(existing)
-    log.info(f"[node_trends] {len(existing)} existants + {new_count} nouveaux = {len(merged['data'])} total")
-
-    updates = {"trends_data": merged}
-    if new_count == 0 and existing:
-        exhausted = list(state.get("exhausted_tools", []))
-        if "trends" not in exhausted:
-            exhausted.append("trends")
-            log.info("[node_trends] Aucun nouveau résultat — outil marqué comme épuisé.")
-        updates["exhausted_tools"] = exhausted
-    return updates
+    log.info(f"[node_trends] {state['product']} / {state['market']}")
+    result = fetch_trends(state["product"], state["market"])
+    log.info(f"[node_trends] {len(result['data'])} insights collectés")
+    return {"trends_data": result}
 
 
 # -------------------------------------------------
@@ -476,24 +465,3 @@ def _assemble_report(state: dict, insights: dict, source: str) -> dict:
         "insights": insights,
         "errors":   state["errors"],
     }
-
-
-# -------------------------------------------------
-# HELPER FUNCTIONS
-# -------------------------------------------------
-def _clean_duplicate_results(existing: list, new_result: dict, key=None) -> dict:
-    """
-    Fusionne `existing` avec `new_result["data"]` en évitant les doublons.
-    key : callable(item) -> valeur hashable utilisée pour la déduplication.
-          Si None, compare les items directement (texte, string, etc.).
-    Retourne un dict {"source": ..., "data": [...]}.
-    """
-    if not existing:
-        return new_result
-    if key is None:
-        seen  = set(existing)
-        fresh = [r for r in new_result["data"] if r not in seen]
-    else:
-        seen  = {key(r) for r in existing}
-        fresh = [r for r in new_result["data"] if key(r) not in seen]
-    return {"source": new_result["source"], "data": existing + fresh}

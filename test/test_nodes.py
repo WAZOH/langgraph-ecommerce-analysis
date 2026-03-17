@@ -29,8 +29,9 @@ def base_state() -> dict:
         "scraper_data":   {},
         "sentiment_data": {},
         "trends_data":    {},
-        "report":         {},
-        "errors":         [],
+        "report":          {},
+        "errors":          [],
+        "exhausted_tools": [],
     }
 
 
