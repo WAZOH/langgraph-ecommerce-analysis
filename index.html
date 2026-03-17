@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Market Analysis Agent</title>
+  <style>
+    :root {
+      --bg:     #0d1117;
+      --bg2:    #161b22;
+      --bg3:    #21262d;
+      --border: #30363d;
+      --text:   #e6edf3;
+      --muted:  #8b949e;
+      --blue:   #58a6ff;
+      --green:  #3fb950;
+      --yellow: #d29922;
+      --red:    #f85149;
+      --purple: #bc8cff;
+      --orange: #ffa657;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 28px 20px;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* ── Header ─────────────────────────────── */
+    .header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 28px;
+    }
+    .header-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header p  { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Prompt card ─────────────────────────── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .8px;
+      color: var(--muted); margin-bottom: 14px;
+    }
+
+    textarea#prompt-input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.55;
+      resize: vertical;
+      min-height: 72px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    textarea#prompt-input:focus { border-color: var(--blue); }
+
+    .prompt-footer {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-top: 12px; gap: 12px; flex-wrap: wrap;
+    }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px; color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .chip:hover { border-color: var(--blue); color: var(--blue); }
+
+    .btn {
+      background: var(--blue); color: #0d1117;
+      border: none; border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: opacity .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:hover  { opacity: .88; }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* ── Terminal ────────────────────────────── */
+    .terminal-wrap {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .terminal-topbar {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 9px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .dots { display: flex; gap: 6px; }
+    .dot  { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .terminal-label {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px; color: var(--muted);
+      flex: 1; text-align: center;
+    }
+    .terminal-body {
+      padding: 14px 16px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px; line-height: 1.65;
+      min-height: 100px; max-height: 380px;
+      overflow-y: auto;
+    }
+    .t-line { display: flex; gap: 8px; margin-bottom: 1px; }
+    .t-ts   { color: #3d444d; flex-shrink: 0; user-select: none; }
+    .t-icon { flex-shrink: 0; }
+    .t-node  { color: var(--blue);   font-weight: 700; }
+    .t-val   { color: var(--green); }
+    .t-dim   { color: var(--muted); }
+    .t-ok    { color: var(--green); }
+    .t-err   { color: var(--red); }
+    .t-warn  { color: var(--yellow); }
+
+    /* ── Dashboard ───────────────────────────── */
+    #dashboard { display: none; }
+    #dashboard.show { display: block; }
+
+    .meta-row   { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .meta-badge {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 12px; font-size: 13px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .meta-badge span { color: var(--muted); font-size: 11px; }
+    .tool-badge {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px; font-size: 12px;
+      display: flex; align-items: center; gap: 5px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    /* Score hero */
+    .score-hero { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .score-val  { font-size: 56px; font-weight: 900; font-family: monospace; line-height: 1; }
+    .score-sub  { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; max-width: 240px; }
+
+    /* Gauge */
+    .gauge-svg { width: 170px; height: 95px; overflow: visible; flex-shrink: 0; }
+
+    /* Pill badges */
+    .pill        { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 6px; }
+    .pill-pos    { background: rgba(63,185,80,.15);  color: var(--green); }
+    .pill-neu    { background: rgba(210,153,34,.15); color: var(--yellow); }
+    .pill-neg    { background: rgba(248,81,73,.15);  color: var(--red); }
+
+    /* Pricing bars */
+    .price-row   { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .price-lbl   { font-size: 12px; color: var(--muted); width: 90px; flex-shrink: 0; }
+    .bar-track   { flex: 1; background: var(--bg3); border-radius: 4px; height: 8px; overflow: hidden; }
+    .bar-fill    { height: 100%; border-radius: 4px; transition: width 1.1s ease; }
+    .price-val   { font-size: 13px; font-weight: 700; font-family: monospace; width: 72px; text-align: right; flex-shrink: 0; }
+
+    /* Sentiment distribution bar */
+    .sent-dist     { display: flex; gap: 3px; height: 7px; border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
+    .sent-dist-seg { border-radius: 2px; }
+    .sent-grid     { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .sent-col-h    { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+    .sent-item     { font-size: 12px; color: var(--muted); padding: 4px 0; border-bottom: 1px solid var(--border); line-height: 1.4; }
+
+    /* Trends */
+    .momentum-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 13px; border-radius: 20px;
+      font-size: 13px; font-weight: 700;
+    }
+    .mb-rising   { background: rgba(63,185,80,.12);  color: var(--green);  border: 1px solid rgba(63,185,80,.3); }
+    .mb-stable   { background: rgba(88,166,255,.12); color: var(--blue);   border: 1px solid rgba(88,166,255,.3); }
+    .mb-declining{ background: rgba(248,81,73,.12);  color: var(--red);    border: 1px solid rgba(248,81,73,.3); }
+    .tstat       { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .tstat span:first-child { color: var(--muted); }
+    .tstat span:last-child  { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .spark { overflow: visible; }
+
+    /* Opportunities / Risks as tags */
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag { padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 600;
+           display: inline-flex; align-items: center; gap: 5px; line-height: 1.4; }
+    .tag-g { background: rgba(63,185,80,.12);  color: var(--green);  border: 1px solid rgba(63,185,80,.25); }
+    .tag-r { background: rgba(248,81,73,.12);  color: var(--red);    border: 1px solid rgba(248,81,73,.25); }
+
+    /* Competitive */
+    .comp-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .comp-pill { padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+                 background: var(--bg3); border: 1px solid var(--border);
+                 display: flex; align-items: center; gap: 7px; }
+    .comp-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Recommendations */
+    .rec-item {
+      display: flex; gap: 12px;
+      padding: 12px; background: var(--bg3);
+      border-radius: 8px; margin-bottom: 8px;
+      font-size: 13px; line-height: 1.5; align-items: flex-start;
+    }
+    .rec-n {
+      background: var(--blue); color: #0d1117;
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0; margin-top: 1px;
+    }
+
+    /* Decision chain */
+    .log-item {
+      display: flex; gap: 12px; padding: 8px 0;
+      font-size: 13px; position: relative;
+    }
+    .log-item:not(:last-child)::before {
+      content: ''; position: absolute;
+      left: 13px; top: 30px; bottom: -8px;
+      width: 1px; background: var(--border);
+    }
+    .log-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--bg3); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-family: monospace; flex-shrink: 0;
+    }
+    .log-action { font-weight: 700; color: var(--blue); }
+    .log-reason { color: var(--muted); }
+
+    /* JSON accordion */
+    details.json-acc {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 14px;
+    }
+    details.json-acc > summary {
+      padding: 14px 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      list-style: none; user-select: none;
+    }
+    details.json-acc > summary::-webkit-details-marker { display: none; }
+    details.json-acc > summary:hover { color: var(--text); }
+    .chevron { transition: transform .2s; }
+    details[open] .chevron { transform: rotate(180deg); }
+    .json-body {
+      border-top: 1px solid var(--border);
+      padding: 16px; background: #010409;
+    }
+    pre {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px; line-height: 1.5;
+      color: var(--muted); overflow-x: auto;
+      white-space: pre-wrap; word-break: break-all;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 580px) {
+      .grid-2    { grid-template-columns: 1fr; }
+      .sent-grid { grid-template-columns: 1fr; }
+      .meta-row  { gap: 6px; }
+      .score-hero { justify-content: center; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">🔍</div>
+    <div>
+      <h1>Market Analysis Agent</h1>
+      <p>Pipeline LangGraph · Gemini · SerpApi — analyse e-commerce en temps réel</p>
+    </div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="card">
+    <div class="card-title">Votre demande d'analyse</div>
+    <textarea id="prompt-input" rows="3"
+      placeholder="Ex : Analyse le marché canadien pour les écouteurs Sony WH-1000XM5. Je veux savoir si c'est le bon moment pour lancer une boutique Shopify."></textarea>
+    <div class="prompt-footer">
+      <div class="chips">
+        <div class="chip" onclick="useExample(this)">iPhone 17 Pro Max · Canada</div>
+        <div class="chip" onclick="useExample(this)">Dyson Vacuum V16 · France</div>
+        <div class="chip" onclick="useExample(this)">Nintendo Switch OLED · USA</div>
+      </div>
+      <button class="btn" id="run-btn" onclick="run()">Analyser →</button>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div class="terminal-wrap hidden" id="terminal-wrap">
+    <div class="terminal-topbar">
+      <div class="dots">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+      </div>
+      <div class="terminal-label">langgraph-pipeline — bash</div>
+    </div>
+    <div class="terminal-body" id="terminal-body"></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard"></div>
+
+  <!-- JSON accordion -->
+  <details class="json-acc hidden" id="json-acc">
+    <summary>
+      <span>Données brutes JSON</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z"/>
+      </svg>
+    </summary>
+    <div class="json-body"><pre id="json-out"></pre></div>
+  </details>
+
+</div><!-- /container -->
+
+<script>
+const API = 'http://localhost:8000';
+
+const EXAMPLES = {
+  'iPhone 17 Pro Max · Canada':
+    "Analyse le marché canadien pour l'iPhone 17 Pro Max. Est-ce une bonne opportunité de revente sur Amazon ?",
+  'Dyson Vacuum V16 · France':
+    "Analyse le marché français pour le Dyson Vacuum V16. Est-ce que je devrais m'ouvrir une boutique sur Shopify pour vendre ce produit ?",
+  'Nintendo Switch OLED · USA':
+    "Je veux lancer un business de revente de Nintendo Switch OLED aux États-Unis. Analyse le marché et dis-moi si c'est viable.",
+};
+
+function useExample(chip) {
+  document.getElementById('prompt-input').value = EXAMPLES[chip.textContent] || chip.textContent;
+}
+
+// ── Terminal helpers ──────────────────────────────────────────────────────────
+let t0 = null;
+
+function ts() {
+  if (!t0) return '00:00';
+  const s = (Date.now() - t0) / 1000;
+  return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(Math.floor(s % 60)).padStart(2,'0')}`;
+}
+
+function tlog(html) {
+  const body = document.getElementById('terminal-body');
+  const el   = document.createElement('div');
+  el.className = 't-line';
+  el.innerHTML = `<span class="t-ts">[${ts()}]</span>${html}`;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+}
+
+const NODE_ICON = {
+  node_orchestrator: '🧠',
+  node_scraper:      '💰',
+  node_sentiment:    '💬',
+  node_trends:       '📈',
+  node_report:       '📋',
+  log_reasoning:     '📝',
+};
+
+// ── SSE event handler ─────────────────────────────────────────────────────────
+function onEvent(ev) {
+  if (ev.type === 'start') {
+    tlog(`<span class="t-icon">🚀</span><span class="t-dim"> Pipeline LangGraph démarré…</span>`);
+  }
+  else if (ev.type === 'node') {
+    if (ev.node === 'log_reasoning') return;
+    const icon = NODE_ICON[ev.node] || '⚙️';
+
+    if (ev.node === 'node_orchestrator') {
+      tlog(`<span class="t-icon">${icon}</span> <span class="t-node">[orchestrator]</span><span class="t-dim"> turn ${ev.turn} → <span class="t-val">${ev.next_action || '…'}</span></span>`);
+      if (ev.reasoning)
+        tlog(`<span class="t-ts">      </span><span class="t-dim">  └ ${ev.reasoning}</span>`);
+      if (ev.product && ev.turn === 1)
+        tlog(`<span class="t-ts">      </span><span class="t-dim">  └ Produit : <span class="t-val">${ev.product}</span> · Marché : <span class="t-val">${ev.market}</span></span>`);
+    }
+    else if (ev.node === 'node_scraper')
+      tlog(`<span class="t-icon">${icon}</span> <span class="t-node">[scraper]</span><span class="t-dim"> ${ev.count} prix collectés · source : <span class="t-val">${ev.source}</span></span>`);
+    else if (ev.node === 'node_sentiment')
+      tlog(`<span class="t-icon">${icon}</span> <span class="t-node">[sentiment]</span><span class="t-dim"> ${ev.count} avis collectés · source : <span class="t-val">${ev.source}</span></span>`);
+    else if (ev.node === 'node_trends')
+      tlog(`<span class="t-icon">${icon}</span> <span class="t-node">[trends]</span><span class="t-dim"> ${ev.count} insights · source : <span class="t-val">${ev.source}</span></span>`);
+    else if (ev.node === 'node_report') {
+      const srcLabel = ev.source === 'gemini' ? 'Gemini' : ev.source === 'rule_based' ? 'rule-based' : ev.source;
+      const tools = (ev.tools_used || []).join(', ') || '—';
+      tlog(`<span class="t-icon">${icon}</span> <span class="t-node">[report]</span><span class="t-dim"> génération du rapport… source : <span class="t-val">${srcLabel}</span></span>`);
+      tlog(`<span class="t-ts">      </span><span class="t-dim">  └ outils utilisés : <span class="t-val">${tools}</span> · ${ev.steps} collecte(s)</span>`);
+    }
+  }
+  else if (ev.type === 'complete') {
+    tlog(`<span class="t-icon">✅</span><span class="t-ok"> Analyse terminée en ${((Date.now()-t0)/1000).toFixed(1)}s</span>`);
+    renderDashboard(ev.report);
+  }
+  else if (ev.type === 'error') {
+    tlog(`<span class="t-icon">❌</span><span class="t-err"> ${ev.message}</span>`);
+    document.getElementById('run-btn').disabled = false;
+    document.getElementById('run-btn').textContent = 'Analyser →';
+  }
+  else if (ev.type === 'done') {
+    document.getElementById('run-btn').disabled = false;
+    document.getElementById('run-btn').textContent = 'Analyser →';
+  }
+}
+
+// ── Main run ──────────────────────────────────────────────────────────────────
+async function run() {
+  const prompt = document.getElementById('prompt-input').value.trim();
+  if (prompt.length < 10) {
+    const ta = document.getElementById('prompt-input');
+    ta.style.borderColor = 'var(--red)';
+    setTimeout(() => ta.style.borderColor = '', 2000);
+    return;
+  }
+
+  document.getElementById('terminal-body').innerHTML = '';
+  document.getElementById('dashboard').innerHTML = '';
+  document.getElementById('dashboard').className = '';
+  document.getElementById('json-acc').classList.add('hidden');
+  document.getElementById('terminal-wrap').classList.remove('hidden');
+
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = 'Analyse en cours…';
+  t0 = Date.now();
+
+  try {
+    const res = await fetch(`${API}/analyze/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!res.ok) {
+      tlog(`<span class="t-err">HTTP ${res.status}: ${res.statusText}</span>`);
+      btn.disabled = false; btn.textContent = 'Analyser →';
+      return;
+    }
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let   buf     = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try { onEvent(JSON.parse(line.slice(6))); } catch {}
+        }
+      }
+    }
+  } catch (err) {
+    tlog(`<span class="t-err">Connexion impossible : ${err.message}</span>`);
+    tlog(`<span class="t-dim">Vérifiez que le serveur tourne sur ${API}</span>`);
+    btn.disabled = false; btn.textContent = 'Analyser →';
+  }
+}
+
+// Ctrl+Enter shortcut
+document.getElementById('prompt-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) run();
+});
+
+// ── Dashboard renderer ────────────────────────────────────────────────────────
+function renderDashboard(report) {
+  const ins  = report.insights || {};
+  const dash = document.getElementById('dashboard');
+  let   html = '';
+
+  // ── Meta strip
+  const intentMap = {
+    buy_decision: "Décision d'achat", pricing_strategy: 'Stratégie de prix',
+    market_opportunity: 'Opportunité', sentiment_analysis: 'Sentiment',
+    competitive_analysis: 'Concurrence', general_analysis: 'Analyse générale',
+  };
+  const toolIcons = { scraper: '💰 Prix', sentiment: '💬 Avis', trends: '📈 Tendances' };
+  const toolBadges = (report.tools_used || []).map(t =>
+    `<div class="tool-badge"><span style="color:var(--green)">✓</span> ${toolIcons[t] || t}</div>`
+  ).join('');
+
+  html += `
+    <div class="card" style="margin-bottom:14px">
+      <div class="meta-row">
+        <div class="meta-badge"><span>Produit</span>${esc(report.product)}</div>
+        <div class="meta-badge"><span>Marché</span>${esc(report.market)}</div>
+        ${ins.intent ? `<div class="meta-badge"><span>Intent</span>${esc(intentMap[ins.intent] || ins.intent)}</div>` : ''}
+      </div>
+      <div class="meta-row">${toolBadges}</div>
+    </div>`;
+
+  // ── Score hero (full width) + résumé
+  if (ins.market_score !== undefined) {
+    html += renderScoreHero(ins.market_score, ins.market_score_explanation, ins.executive_summary);
+  } else if (ins.executive_summary) {
+    html += `<div class="card" style="margin-bottom:14px">
+      <div style="font-size:14px;color:var(--muted);line-height:1.6">${esc(ins.executive_summary)}</div>
+    </div>`;
+  }
+
+  // ── Row 1: Pricing chart + Sentiment
+  const row1 = [];
+  if (ins.pricing)   row1.push(renderPricingChart(ins.pricing, report.data_raw?.prices || []));
+  if (ins.sentiment) row1.push(renderSentimentCard(ins.sentiment));
+  if (row1.length) html += `<div class="grid-2">${row1.join('')}</div>`;
+
+  // ── Row 2: Trends sparkline + Competitive
+  const row2 = [];
+  if (ins.trends) row2.push(renderTrendsCard(ins.trends));
+  if (ins.competitive_analysis?.key_players?.length) row2.push(renderCompetitive(ins.competitive_analysis, report.data_raw?.prices || []));
+  if (row2.length) html += `<div class="grid-2">${row2.join('')}</div>`;
+
+  // ── Opportunities + Risks as tag clouds
+  const hasOpps  = ins.opportunities?.length;
+  const hasRisks = ins.risks?.length;
+  if (hasOpps || hasRisks) {
+    html += `<div class="grid-2" style="margin-bottom:14px">`;
+    if (hasOpps) html += `
+      <div class="card">
+        <div class="card-title" style="color:var(--green)">Opportunités</div>
+        <div class="tag-row">
+          ${ins.opportunities.map(o => `<span class="tag tag-g">▸ ${esc(o)}</span>`).join('')}
+        </div>
+      </div>`;
+    if (hasRisks) html += `
+      <div class="card">
+        <div class="card-title" style="color:var(--red)">Risques</div>
+        <div class="tag-row">
+          ${ins.risks.map(r => `<span class="tag tag-r">▸ ${esc(r)}</span>`).join('')}
+        </div>
+      </div>`;
+    html += `</div>`;
+  }
+
+  // ── Recommendations
+  if (ins.recommendations?.length) {
+    html += `
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Recommandations</div>
+        ${ins.recommendations.map((r, i) => `
+          <div class="rec-item">
+            <div class="rec-n">${i+1}</div>
+            <div>${esc(r)}</div>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  // ── Decision chain
+  const rlog = report.reasoning_log || [];
+  if (rlog.length) {
+    const nodeNames = {
+      node_scraper: 'Scraper prix', node_sentiment: 'Analyse avis',
+      node_trends:  'Tendances',    node_report: 'Rapport final',
+    };
+    html += `
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Chaîne de décisions</div>
+        ${rlog.map(e => `
+          <div class="log-item">
+            <div class="log-dot">${e.turn}</div>
+            <div>
+              <div class="log-action">${esc(nodeNames[e.action] || e.action)}</div>
+              <div class="log-reason">${esc(e.reason || '')}</div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  dash.innerHTML = html;
+  dash.className = 'show';
+
+  document.getElementById('json-out').textContent = JSON.stringify(report, null, 2);
+  document.getElementById('json-acc').classList.remove('hidden');
+  setTimeout(() => dash.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
+
+// ── Score hero ─────────────────────────────────────────────────────────────────
+function renderScoreHero(score, expl, summary) {
+  const color = score >= 7 ? 'var(--green)' : score >= 5 ? 'var(--yellow)' : 'var(--red)';
+  const label = score >= 7 ? 'Marché favorable' : score >= 5 ? 'Marché mitigé' : 'Marché défavorable';
+  const pillC = score >= 7 ? 'pill-pos' : score >= 5 ? 'pill-neu' : 'pill-neg';
+  const arc   = arcPath(score);
+  return `
+    <div class="card" style="margin-bottom:14px">
+      <div class="score-hero">
+        <div>
+          <div class="card-title">Score de marché</div>
+          <div class="score-val" style="color:${color}">${score}<span style="font-size:20px;color:var(--muted)">/10</span></div>
+          <span class="pill ${pillC}">${label}</span>
+          ${expl ? `<div class="score-sub">${esc(expl)}</div>` : ''}
+        </div>
+        <svg class="gauge-svg" viewBox="0 0 200 105">
+          <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="#30363d" fill="none" stroke-width="14" stroke-linecap="round"/>
+          ${score > 0 ? `<path d="M 20 100 A 80 80 0 0 1 180 100" stroke="${color}" fill="none" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - score * 10}"/>` : ''}
+        </svg>
+      </div>
+      ${summary ? `<div style="font-size:14px;color:var(--muted);margin-top:14px;padding-top:14px;border-top:1px solid var(--border);line-height:1.6">${esc(summary)}</div>` : ''}
+    </div>`;
+}
+
+// ── Pricing — SVG vertical bar chart ──────────────────────────────────────────
+function renderPricingChart(p, rawPrices) {
+  const rec = p.recommendation ?? p.recommended;
+  const bars = [
+    { label: 'Min',  val: p.min,     color: '#8b949e' },
+    { label: 'Moy',  val: p.average, color: 'var(--blue)' },
+    { label: 'Max',  val: p.max,     color: 'var(--orange)' },
+    { label: 'Rec',  val: rec,       color: 'var(--green)' },
+  ].filter(d => d.val != null);
+
+  const maxVal = Math.max(...bars.map(d => d.val)) || 1;
+  const W = 240, barH = 88, barW = 44, gap = 16;
+  const totalW = bars.length * barW + (bars.length - 1) * gap;
+  const startX = (W - totalW) / 2;
+
+  const rects = bars.map((d, i) => {
+    const h  = Math.max(6, (d.val / maxVal) * barH);
+    const x  = startX + i * (barW + gap);
+    const y  = barH - h;
+    const lx = x + barW / 2;
+    return `
+      <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="5" fill="${d.color}" opacity="0.82"/>
+      <text x="${lx}" y="${y - 5}" text-anchor="middle" fill="${d.color}" font-size="9.5" font-family="monospace" font-weight="700">$${Number(d.val).toFixed(0)}</text>
+      <text x="${lx}" y="106" text-anchor="middle" fill="#8b949e" font-size="10">${d.label}</text>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div class="card-title">Analyse des prix</div>
+      <svg viewBox="0 0 ${W} 114" style="width:100%;display:block;margin:4px 0 8px">${rects}</svg>
+      ${buildRetailerRows(rawPrices, p.max)}
+      ${(p.recommendation_reason || p.rationale)
+        ? `<div style="font-size:12px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border)">${esc(p.recommendation_reason || p.rationale)}</div>`
+        : ''}
+    </div>`;
+}
+
+function buildRetailerRows(rawPrices, maxPrice) {
+  if (!rawPrices?.length) return '';
+  // Deduplicate: keep min price per retailer
+  const byRetailer = {};
+  for (const item of rawPrices) {
+    const name = item.source || 'Autre';
+    if (byRetailer[name] == null || item.price < byRetailer[name])
+      byRetailer[name] = item.price;
+  }
+  const entries = Object.entries(byRetailer).sort((a, b) => a[1] - b[1]);
+  const max = maxPrice || Math.max(...entries.map(e => e[1])) || 1;
+
+  const rows = entries.map(([name, price]) => {
+    const pct   = Math.min(100, (price / max) * 100).toFixed(1);
+    const color = price === entries[0][1] ? 'var(--green)' : price === entries[entries.length-1][1] ? 'var(--red)' : 'var(--blue)';
+    return `
+      <div class="price-row">
+        <span class="price-lbl">${esc(name)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <span class="price-val" style="color:${color}">$${Number(price).toFixed(2)}</span>
+      </div>`;
+  }).join('');
+
+  return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:10px">Prix par vendeur</div>
+    ${rows}
+  </div>`;
+}
+
+// ── Sentiment — score + distribution bar + pros/cons ──────────────────────────
+function renderSentimentCard(s) {
+  const nps   = s.NPS ?? (s.score != null ? Math.round(s.score * 10) : null);
+  const lbl   = s.label || 'neutral';
+  const color = lbl === 'positive' ? 'var(--green)' : lbl === 'negative' ? 'var(--red)' : 'var(--yellow)';
+  const pillC = lbl === 'positive' ? 'pill-pos' : lbl === 'negative' ? 'pill-neg' : 'pill-neu';
+  const lblFr = { positive: 'Positif', neutral: 'Neutre', negative: 'Négatif' }[lbl] || lbl;
+  const pos   = s.positives || [];
+  const neg   = s.negatives || [];
+
+  // Derive distribution proportions from score + label
+  const posPct = nps != null ? nps * 10 : (lbl === 'positive' ? 65 : lbl === 'negative' ? 20 : 40);
+  const negPct = lbl === 'negative' ? Math.max(30, 100 - posPct - 15) : Math.max(5, Math.round((10 - (nps||5)) * 5));
+  const neuPct = Math.max(0, 100 - posPct - negPct);
+
+  return `
+    <div class="card">
+      <div class="card-title">Sentiment client</div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+        ${nps != null
+          ? `<div style="font-size:46px;font-weight:900;font-family:monospace;line-height:1;color:${color};flex-shrink:0">${nps}<span style="font-size:14px;color:var(--muted)">/10</span></div>`
+          : ''}
+        <div>
+          <span class="pill ${pillC}">${lblFr}</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">
+            <span style="color:var(--green)">▮ ${posPct}% positif</span><br>
+            <span style="color:var(--yellow)">▮ ${neuPct}% neutre</span><br>
+            <span style="color:var(--red)">▮ ${negPct}% négatif</span>
+          </div>
+        </div>
+      </div>
+      <div class="sent-dist">
+        <div class="sent-dist-seg" style="width:${posPct}%;background:var(--green)"></div>
+        <div class="sent-dist-seg" style="width:${neuPct}%;background:var(--yellow)"></div>
+        <div class="sent-dist-seg" style="width:${negPct}%;background:var(--red)"></div>
+      </div>
+      <div class="sent-grid">
+        <div>
+          <div class="sent-col-h" style="color:var(--green)">Points positifs</div>
+          ${pos.slice(0,3).map(p => `<div class="sent-item">+ ${esc(p)}</div>`).join('')}
+        </div>
+        <div>
+          <div class="sent-col-h" style="color:var(--red)">Points négatifs</div>
+          ${neg.slice(0,3).map(n => `<div class="sent-item">− ${esc(n)}</div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Trends — momentum + sparkline + stats ─────────────────────────────────────
+function renderTrendsCard(t) {
+  const mom   = t.momentum || 'stable';
+  const mCls  = `mb-${mom}`;
+  const mIco  = { rising: '↑', stable: '→', declining: '↓' }[mom] || '→';
+  const mFr   = { rising: 'En hausse', stable: 'Stable', declining: 'En baisse' }[mom] || mom;
+  const mColor= { rising: 'var(--green)', stable: 'var(--blue)', declining: 'var(--red)' }[mom] || 'var(--blue)';
+  const evFr  = { rising: 'En hausse', stable: 'Stable', falling: 'En baisse' };
+
+  const sparkPath = {
+    rising:   'M 8 44 C 35 38 55 30 80 22 S 130 12 158 7 S 185 4 196 2',
+    declining:'M 8  2 C 35  8 55 16 80 24 S 130 34 158 40 S 185 43 196 46',
+    stable:   'M 8 24 C 35 18 55 30 80 24 S 130 20 158 27 S 185 22 196 24',
+  }[mom] || 'M 8 24 L 196 24';
+
+  const endY = mom === 'rising' ? 2 : mom === 'declining' ? 46 : 24;
+
+  return `
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">Tendances de marché</div>
+        <span class="momentum-badge ${mCls}">${mIco} ${mFr}</span>
+      </div>
+      <svg class="spark" viewBox="0 0 204 50" style="width:100%;height:52px;margin-bottom:10px">
+        <path d="${sparkPath}" stroke="${mColor}" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+        <circle cx="196" cy="${endY}" r="4" fill="${mColor}"/>
+      </svg>
+      ${t.popularity_score != null ? `
+        <div class="tstat">
+          <span>Popularité</span>
+          <span>
+            <div style="width:80px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle">
+              <div style="width:${t.popularity_score * 10}%;height:100%;background:${mColor};border-radius:3px"></div>
+            </div>
+            &nbsp;${t.popularity_score}/10
+          </span>
+        </div>` : ''}
+      ${t.peak_season     ? `<div class="tstat"><span>Pic saisonnier</span><span>${esc(t.peak_season)}</span></div>` : ''}
+      ${t.price_evolution ? `<div class="tstat"><span>Évolution prix</span><span>${esc(evFr[t.price_evolution] || t.price_evolution)}</span></div>` : ''}
+      ${t.popularity_explanation ? `<div style="font-size:12px;color:var(--muted);margin-top:10px">${esc(t.popularity_explanation)}</div>` : ''}
+    </div>`;
+}
+
+// ── Competitive analysis ───────────────────────────────────────────────────────
+function renderCompetitive(ca, rawPrices) {
+  const players   = ca.key_players || [];
+  const shares    = ca.market_share || {};
+  const hasShares = Object.keys(shares).some(k => shares[k] != null && shares[k] > 0);
+
+  const COLORS = ['var(--blue)','var(--green)','var(--purple)','var(--orange)','var(--yellow)','#58d6ff','var(--red)'];
+
+  // Build min-price-per-source map from raw prices
+  const priceBySource = {};
+  for (const item of (rawPrices || [])) {
+    const key = (item.source || '').toLowerCase();
+    if (priceBySource[key] == null || item.price < priceBySource[key])
+      priceBySource[key] = item.price;
+  }
+
+  // Match each player to a price (fuzzy: player name contained in source or vice-versa)
+  function matchPrice(player) {
+    const p = player.toLowerCase();
+    for (const [src, price] of Object.entries(priceBySource)) {
+      if (src.includes(p) || p.includes(src)) return price;
+    }
+    return null;
+  }
+
+  // Build enriched player list: { name, color, share, price }
+  const enriched = players.map((name, i) => ({
+    name,
+    color: COLORS[i % COLORS.length],
+    share: shares[name] ?? null,
+    price: matchPrice(name),
+  }));
+
+  // Sort: players with price first (cheapest first), then rest
+  const withPrice    = enriched.filter(e => e.price != null).sort((a, b) => a.price - b.price);
+  const withoutPrice = enriched.filter(e => e.price == null);
+  const sorted = [...withPrice, ...withoutPrice];
+
+  const maxPrice = withPrice.length ? withPrice[withPrice.length - 1].price : 1;
+
+  // Price bars section (players that have a matched price)
+  const priceRows = withPrice.map(e => {
+    const pct   = ((e.price / maxPrice) * 100).toFixed(1);
+    const badge = e.price === withPrice[0].price
+      ? `<span style="font-size:10px;background:rgba(63,185,80,.15);color:var(--green);border-radius:4px;padding:1px 6px;margin-left:4px">best</span>`
+      : '';
+    return `
+      <div class="price-row">
+        <span class="price-lbl" style="width:110px;color:${e.color}">${esc(e.name)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${e.color}"></div></div>
+        <span class="price-val" style="color:${e.color}">$${Number(e.price).toFixed(2)}${badge}</span>
+      </div>`;
+  }).join('');
+
+  // Market share bars (when available)
+  const shareRows = hasShares
+    ? (() => {
+        const maxShare = Math.max(...players.map(p => shares[p] || 0)) || 1;
+        return sorted.filter(e => (shares[e.name] || 0) > 0).map(e => `
+          <div class="price-row">
+            <span class="price-lbl" style="width:110px;color:${e.color}">${esc(e.name)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${((shares[e.name]/maxShare)*100).toFixed(1)}%;background:${e.color}"></div></div>
+            <span class="price-val" style="color:${e.color}">${Number(shares[e.name]).toFixed(1)}%</span>
+          </div>`).join('');
+      })()
+    : '';
+
+  // Players without any price data shown as plain pills
+  const pillsHtml = withoutPrice.length ? `
+    <div class="comp-grid" style="margin-top:10px">
+      ${withoutPrice.map(e => `
+        <div class="comp-pill">
+          <div class="comp-dot" style="background:${e.color}"></div>
+          ${esc(e.name)}
+        </div>`).join('')}
+    </div>` : '';
+
+  return `
+    <div class="card">
+      <div class="card-title">Analyse concurrentielle</div>
+      ${priceRows
+        ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:10px">Prix observés</div>${priceRows}`
+        : ''}
+      ${hasShares
+        ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin:12px 0 10px;padding-top:12px;border-top:1px solid var(--border)">Parts de marché</div>${shareRows}`
+        : ''}
+      ${pillsHtml}
+      ${!priceRows && !hasShares
+        ? `<div class="comp-grid">${sorted.map(e => `<div class="comp-pill"><div class="comp-dot" style="background:${e.color}"></div>${esc(e.name)}</div>`).join('')}</div><div style="font-size:11px;color:var(--muted);margin-top:8px">Prix et parts de marché non disponibles</div>`
+        : ''}
+    </div>`;
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
