@@ -3,12 +3,6 @@
 Agent d'analyse de marché e-commerce piloté par un prompt libre.
 L'agent extrait le produit et le marché, choisit ses outils, et produit un rapport stratégique.
 
-```bash
-curl -X POST http://localhost:8000/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Analyse le marché canadien pour les Nike Air Max 90. Je veux savoir si c'\''est rentable de les revendre en ligne."}'
-```
-
 ---
 
 ## Architecture
@@ -47,11 +41,10 @@ POST /analyze { "prompt": "..." }
 **Fallback automatique :** si une API est indisponible, le mock correspondant prend le relais. La requête ne fail jamais.
 
 **Pourquoi LangGraph ?**
-LangGraph permet de modéliser l'agent comme un graphe avec des cycles natifs.
 
-1. **Support des cycles** : `add_edge(tool_node, "node_orchestrator")` crée la boucle de raisonnement.
-2. **État partagé entre les tours** : `AgentState` accumule les données collectées à chaque tour.
-3. **Routing conditionnel lisible** : `conditional_edges("node_orchestrator", route_next)` exprime clairement que c'est l'orchestrateur qui pilote le flux.
+J'ai besoin d'une solution modulable où chaque composant a une responsabilité claire et peut évoluer indépendamment. LangGraph offre trois avantages concrets pour ce projet : l'AgentState donne une mémoire persistante au LLM entre chaque appel d'outil, les liens entre les nodes sont déclarés explicitement ce qui rend le flux lisible d'un coup d'oeil. Changer de modèle ne touche pas à la logique d'orchestration.
+CrewAI et AutoGen sont pensés pour la collaboration entre plusieurs agents qui se parlent. Notre besoin est différent : un seul orchestrateur qui boucle sur ses propres outils. Ce pattern est plus naturel dans LangGraph. Google ADK est encore jeune et optimisé pour l'écosystème Google Cloud, ce qui introduit une dépendance inutile pour ce projet.
+Une implémentation native en Python aurait été possible, mais elle aurait nécessité de recoder la gestion d'état entre les tours, le routing conditionnel et la protection contre les boucles infinies. Ce sont des problèmes déjà résolus par le framework LangGraph.
 
 ---
 
@@ -152,7 +145,7 @@ python -m pytest test/test_pipeline.py -v
 python -m pytest test/test_api.py -v
 ```
 
-| Fichier | Tests | Critère couvert |
+| Fichier | Tests | Explications |
 |---|---|---|
 | `test_tools.py` | `test_scraper_returns_prices`<br>`test_sentiment_returns_reviews`<br>`test_trends_returns_insights` | **Fonctionnement des outils individuels** : chaque outil retourne des données non vides avec la bonne structure |
 | `test_nodes.py` | `test_orchestrator_routes_to_valid_node`<br>`test_data_nodes_collect_data` | **Orchestration de l'agent** : l'orchestrateur choisit un node valide et les nodes collectent des données |
