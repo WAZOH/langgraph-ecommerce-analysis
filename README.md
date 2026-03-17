@@ -20,7 +20,7 @@ POST /analyze { "prompt": "..." }
 ┌──────────────────────────────────────────────────┐
 │              LangGraph Pipeline                  │
 │                                                  │
-│  node_orchestrator  ← Gemini                     │
+│  node_orchestrator  <- Gemini                    │
 │    │  extrait product/market depuis le prompt    │
 │    │  décide quel tool appeler                   │
 │    │  évalue après chaque appel                  │
@@ -28,35 +28,30 @@ POST /analyze { "prompt": "..." }
 │    ├──► outil 1: node_scraper (prix)             │
 │    │         └──► node_orchestrator              │
 │    │                                             │
-│    ├──► outil 2: node_sentiment (SerpApi Reviews)│
+│    ├──► outil 2: node_sentiment (avis clients)   │
 │    │         └──► node_orchestrator              │
 │    │                                             │
-│    ├──► outil 3: node_trends (SerpApi Trends)    │
+│    ├──► outil 3: node_trends (tendances)         │
 │    │         └──► node_orchestrator              │
 │    │                                             │
-│    └──► outil 4: node_report (Gemini)  ──► END   │
+│    └──► outil 4: node_report (Gemini) --> END    │
 └──────────────────────────────────────────────────┘
         │
         ▼
     JSON Report
 ```
 
-**Pattern:**
-À chaque tour, `node_orchestrator` raisonne sur les données disponibles
-et décide quoi faire ensuite. Il boucle jusqu'à ce que les données soient
-suffisantes pour répondre à la demande, puis route vers `node_report`.
-Maximum `MAX_TURNS` tours (défaut : 6, configurable dans `.env`).
+**Pattern :**
+À chaque tour, `node_orchestrator` évalue les données disponibles et décide quoi faire ensuite. Il boucle jusqu'à avoir assez de données, puis route vers `node_report`. Maximum `MAX_TURNS` tours (défaut : 6, configurable dans `.env`).
 
-**Fallback automatique :** si une API est indisponible, le mock
-correspondant prend le relais — la requête ne fail jamais.
+**Fallback automatique :** si une API est indisponible, le mock correspondant prend le relais. La requête ne fail jamais.
 
 **Pourquoi LangGraph ?**
-LangGraph modélise l'agent comme un graphe orienté avec support natif des cycles.
-Trois raisons concrètes :
+LangGraph permet de modéliser l'agent comme un graphe avec des cycles natifs.
 
-1. **Support des cycles** — `add_edge(tool_node, "node_orchestrator")` crée la boucle. Sans ça, il faudrait gérer l'état manuellement entre les itérations.
-2. **État partagé entre les tours** — `AgentState` accumule les données. L'orchestrateur voit ce qui a déjà été collecté et prend sa décision en connaissance de cause.
-3. **Routing conditionnel lisible** — `conditional_edges("node_orchestrator", route_next)` exprime clairement que c'est l'orchestrateur qui pilote le flux.
+1. **Support des cycles** : `add_edge(tool_node, "node_orchestrator")` crée la boucle de raisonnement.
+2. **État partagé entre les tours** : `AgentState` accumule les données collectées à chaque tour.
+3. **Routing conditionnel lisible** : `conditional_edges("node_orchestrator", route_next)` exprime clairement que c'est l'orchestrateur qui pilote le flux.
 
 ---
 
@@ -89,7 +84,7 @@ langgraph-ecommerce-analysis/
 |---|---|
 | `config.py` | Lire l'environnement |
 | `tools.py` | Appeler les APIs externes |
-| `fallbacks.py` | Logique rule-based quand les APIs ne fonctionnent pas (Gemini et SerpAPI) |
+| `fallbacks.py` | Logique rule-based quand les APIs ne fonctionnent pas |
 | `nodes.py` | Logique de chaque node LangGraph |
 | `agent.py` | Câblage du graphe LangGraph |
 | `main.py` | Exposer l'API REST + SSE streaming |
@@ -98,7 +93,7 @@ langgraph-ecommerce-analysis/
 
 ## Installation
 
-### Étape 1 — Cloner et configurer
+### Étape 1 - Cloner et configurer
 
 ```bash
 git clone https://github.com/WAZOH/langgraph-ecommerce-analysis.git
@@ -107,7 +102,7 @@ cp .env.example .env
 # Remplir les clés API dans .env
 ```
 
-### Étape 2 — Lancer avec Docker
+### Étape 2 - Lancer avec Docker
 
 S'assurer que Docker Desktop est lancé. Si non installé, télécharger sur [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop).
 
@@ -115,13 +110,16 @@ S'assurer que Docker Desktop est lancé. Si non installé, télécharger sur [do
 docker compose up --build
 ```
 
-Il y a 2 manières d'utiliser l'app:
-1- Option 1:
-Aller directement sur `http://localhost:8000` pour voir l'interface utilisateur.
-2- Option 2:
-Aller sur `http://localhost:8000/docs` pour tester en version backend.
+### Étape 3 - Utiliser l'API
 
-### Étape 3 — Utiliser l'API
+Il y a 3 manières d'utiliser l'app :
+
+1. Aller sur `http://localhost:8000` pour voir l'interface utilisateur.
+![Interface utilisateur](index_screenshot.png)
+
+2. Utiliser l'interface interactive Swagger `http://localhost:8000/docs#/Analysis/analyze_analyze_post`.
+
+3. Utiliser dans un terminal:
 
 ```bash
 # Vérifier que le service tourne
@@ -130,34 +128,9 @@ curl http://localhost:8000/health
 # Lancer une analyse avec un prompt libre
 curl -X POST http://localhost:8000/analyze \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Analyse le marché canadien pour les Nike Air Max 90. Je veux savoir si c'\''est rentable de les revendre en ligne."}'
-
-# Autres exemples
-curl -X POST http://localhost:8000/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "I want to sell iPhone 15 cases in the USA. Is the market competitive?"}'
-
-# Dashboard HTML (SSE streaming)
-open http://localhost:8000
-
-# Documentation interactive Swagger
-open http://localhost:8000/docs
+  -d '{"prompt": "Analyse le marche canadien pour les Nike Air Max 90. Je veux savoir si c est rentable de les revendre en ligne."}'
 ```
 
-### Sans Docker (développement local)
-
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-
-# Unix / Mac
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
 
 ### Tests
 
@@ -166,9 +139,10 @@ uvicorn app.main:app --reload
 python -m venv venv
 venv\Scripts\activate          # Windows
 # source venv/bin/activate     # Unix / Mac
+
 pip install -r requirements.txt
 
-# Tous les tests (pas de clé API requise — fonctionne en mode mock)
+# Tous les tests (pas de clé API requise - fonctionne en mode mock)
 python -m pytest test/ -v
 
 # Par module
@@ -180,12 +154,12 @@ python -m pytest test/test_api.py -v
 
 | Fichier | Tests | Critère couvert |
 |---|---|---|
-| `test_tools.py` | `test_scraper_returns_prices`<br>`test_sentiment_returns_reviews`<br>`test_trends_returns_insights` | **Fonctionnement des outils individuels** — chaque outil retourne des données non vides avec la bonne structure |
-| `test_nodes.py` | `test_orchestrator_routes_to_valid_node`<br>`test_data_nodes_collect_data` | **Orchestration de l'agent** — l'orchestrateur choisit un node valide et les nodes collectent des données |
-| `test_nodes.py` | `test_report_node_generates_complete_report` | **Validation des outputs** — le rapport contient les blocs requis (`executive_summary`, `market_score`, `recommendations`) |
-| `test_pipeline.py` | `test_pipeline_extracts_product_and_market`<br>`test_pipeline_used_at_least_one_tool`<br>`test_pipeline_insights_are_complete` | **Orchestration end-to-end** — le graphe complet extrait le contexte, utilise au moins un outil, et produit un rapport |
-| `test_api.py` | `test_health_endpoint`<br>`test_analyze_returns_report` | **Validation des outputs HTTP** — l'API retourne 200 avec un rapport valide |
-| `test_api.py` | `test_invalid_prompt_rejected` | **Gestion des cas d'erreur** — prompt trop court ou manquant retourne 422 |
+| `test_tools.py` | `test_scraper_returns_prices`<br>`test_sentiment_returns_reviews`<br>`test_trends_returns_insights` | **Fonctionnement des outils individuels** : chaque outil retourne des données non vides avec la bonne structure |
+| `test_nodes.py` | `test_orchestrator_routes_to_valid_node`<br>`test_data_nodes_collect_data` | **Orchestration de l'agent** : l'orchestrateur choisit un node valide et les nodes collectent des données |
+| `test_nodes.py` | `test_report_node_generates_complete_report` | **Validation des outputs** : le rapport contient les blocs requis (`executive_summary`, `market_score`, `recommendations`) |
+| `test_pipeline.py` | `test_pipeline_extracts_product_and_market`<br>`test_pipeline_used_at_least_one_tool`<br>`test_pipeline_insights_are_complete` | **Orchestration end-to-end** : le graphe complet extrait le contexte, utilise au moins un outil, et produit un rapport |
+| `test_api.py` | `test_health_endpoint`<br>`test_analyze_returns_report` | **Validation des outputs HTTP** : l'API retourne 200 avec un rapport valide |
+| `test_api.py` | `test_invalid_prompt_rejected` | **Gestion des cas d'erreur** : prompt trop court ou manquant retourne 422 |
 
 ---
 
@@ -193,11 +167,10 @@ python -m pytest test/test_api.py -v
 
 | Service | Utilisation | Gratuit ? | Lien |
 |---|---|---|---|
-| Google Gemini | Orchestration + rapport | ✅ Oui | Voir le fichier envoyé par courriel pour avoir accès à la clé |
-| SerpApi | Prix + avis + tendances Google | ✅ 250 req/mois | Voir le fichier envoyé par courriel pour avoir accès à la clé |
+| Google Gemini | Orchestration + rapport | Oui | Voir le fichier envoyé par courriel pour avoir accès à la clé |
+| SerpApi | Prix + avis + tendances Google | 250 req/mois | Voir le fichier envoyé par courriel pour avoir accès à la clé |
 
-Sans clés, tout fonctionne en mode mock avec des données simulées
-qui ont la même structure que les vraies APIs.
+Sans clés, tout fonctionne en mode mock avec des données simulées qui ont la même structure que les vraies APIs.
 
 ---
 
@@ -209,9 +182,19 @@ Il illustre une analyse complète du marché canadien pour l'iPhone 17 Pro Max 2
 
 ---
 
-## Question 4 — Architecture de données
+## Question 4 - Architecture de données
 
-**PostgreSQL + Redis**
+**Maintenant (MVP) : SQLite + `lru_cache`**
+
+Le projet utilise déjà `@lru_cache` dans `tools.py` pour éviter les appels SerpApi dupliqués dans un même run. SQLite suffit pour stocker les rapports localement sans aucune infrastructure.
+
+**En production : PostgreSQL + Redis**
+
+Quand l'app dessert plusieurs clients en simultané (ou plusieurs analyses simultanées), deux problèmes apparaissent :
+- SQLite ne gère pas bien les écritures concurrentes de plusieurs workers
+- `lru_cache` est local à chaque processus, donc le cache n'est pas partagé entre workers
+
+PostgreSQL résout le premier problème, Redis résout le second.
 
 ```sql
 -- Requêtes et leur statut
@@ -236,121 +219,174 @@ CREATE TABLE analysis_reports (
     created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Cache des appels API
+-- Table Cache des appels API
 CREATE TABLE data_cache (
     cache_key  TEXT PRIMARY KEY,   -- hash(product + market + tool)
     payload    JSONB NOT NULL,
     expires_at TIMESTAMPTZ
 );
 
--- Versions des prompts système (pour A/B testing)
-CREATE TABLE prompt_configs (
+-- Table histo de l'agent
+CREATE TABLE agent_configs (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT UNIQUE NOT NULL,
-    prompt     TEXT NOT NULL,
-    version    INTEGER DEFAULT 1,
+    max_turns  INTEGER,
+    tools      TEXT[],
+    llm_model  TEXT,
+    prompt     TEXT,
     is_active  BOOLEAN DEFAULT TRUE,
+    version    INTEGER DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
 **Pourquoi PostgreSQL ?**
-`report JSONB` stocke le rapport complet sans figer le schéma — les champs `insights` varient selon l'intention détectée par Gemini. SQL reste disponible pour les agrégats (`AVG(turns)`, `COUNT(*)` par produit).
+- **JSONB** : stocke le rapport complet sans figer le schéma. Les champs `insights` varient selon l'intention détectée par Gemini.
+- **MVCC (Multi-Version Concurrency Control)** : plusieurs workers peuvent lire et écrire en simultané sans se bloquer mutuellement.
+- **Open-source et mature** : supporté par tous les cloud providers (AWS RDS, Supabase, GCP Cloud SQL).
 
 **Pourquoi Redis pour le cache ?**
-SerpApi est limité à 100 req/mois en gratuit. Une clé `hash(product:market:tool)` avec TTL évite les appels redondants — même produit analysé 50 fois = 1 seul appel SerpApi.
+- **Cache partagé entre workers** : contrairement à `lru_cache` qui est local à chaque processus, Redis est accessible par tous les workers en simultané.
+- **Time-to-live (TTL) natif** : Foncitonnalité native de Redit qui permet à chaque clé d'expirer automatiquement selon un TTL indiqué par l'utilisateur. Une clé `hash(product:market:tool)` avec TTL de 1h évite les appels SerpApi redondants. Même produit analysé 50 fois = 1 seul appel SerpApi.
+- **Extrêmement rapide** : les données sont en mémoire. Un hit de cache retourne le résultat en moins d'1ms vs plusieurs secondes pour un appel SerpApi.
+- **Persistence optionnelle** : Redis peut persister le cache sur un disque pour survivre aux redémarrages si nécessaire.
 
-```python
-# Exemple d'implémentation dans tools.py
-key = hashlib.md5(f"{product}:{market}:scraper".encode()).hexdigest()
-if cached := redis.get(key):
-    return json.loads(cached)
-result = _serpapi_scraper(...)
-redis.setex(key, ttl=3600, value=json.dumps(result))
-```
 
 ---
 
-## Question 5 — Monitoring et observabilité
+## Question 5 - Monitoring et observabilité
 
-**Tracing : Langfuse** (open-source, spécialisé LLM)
+En production, 2 outils suffisent :
 
-Chaque invocation du graphe devient une trace avec un span par node et par tour.
-Le `reasoning_log` déjà présent dans chaque rapport est le point d'entrée naturel.
+**Langfuse** 
+(Pour assurer la visibilité, l'évaluation et la gestion rapide des applications d'IA)
 
-**Métriques clés (Prometheus + Grafana) :**
+Langfuse enregistre le temps d'exécution de chaque node pour chaque analyse. Les dashboards sont intégrés, rien à configurer. Métriques clés à surveiller :
 
-| Métrique | Type | Seuil d'alerte |
-|---|---|---|
-| `analysis_duration_seconds` (p95) | Histogram | > 30s |
-| `orchestrator_turns_avg` | Gauge | > 2.5 tours |
-| `tool_errors_total` par outil | Counter | hausse soudaine |
-| `llm_tokens_used_total` | Counter | > budget/jour |
-| `mock_fallback_total` | Counter | hausse = API externe en panne |
+- **Nombre de tours moyen de l'orchestrateur** : s'il augmente, le prompt de `node_orchestrator` est à améliorer.
+- **Latence par node** : si `node_scraper` prend soudainement 10s, c'est SerpApi qui ralentit.
+- **Nombre de résultats retournés par outil** : si `node_scraper` retourne moins de 3 prix régulièrement, SerpApi retourne peu de résultats pour ce produit. Même logique pour `node_sentiment` et `node_trends`.
+- **Coût en tokens par analyse** : permet de détecter si un prompt est trop verbeux et coûteux.
+- **Score LLM as Judge moyen** : un second appel Gemini note chaque rapport sur complétude, cohérence et pertinence (score 1-5). Le score peut baisser si les données collectées sont insuffisantes (peu de prix, peu d'avis), si le prompt de `node_report` produit des réponses trop génériques, ou si le modèle Gemini a été mis à jour et se comporte différemment.
 
-`orchestrator_turns_avg` est la métrique la plus utile : un nombre de tours élevé
-signale que l'orchestrateur a du mal à décider, ce qui indique un prompt à améliorer.
+**Sentry** 
+(Pour tracker les bugs dans le pipeline en entier)
 
-**Qualité des outputs — LLM as Judge :**
-Un second appel Gemini note chaque rapport sur complétude, cohérence et pertinence.
-Le score est stocké dans `analysis_reports` et affiché dans Grafana.
+Sentry envoie une alerte dès qu'une erreur survient dans l'app (crash FastAPI, erreur SerpApi, erreur Gemini). Intégration en 2 lignes :
+
 
 ---
 
-## Question 6 — Scaling et optimisation
+## Question 6 - Scaling et optimisation
 
-**Pour 100+ analyses simultanées**, l'API devient asynchrone :
+**Pour 100+ analyses simultanées**, l'API doit devenir  asynchrone :
 
 ```
-POST /analyze  → retourne { job_id } immédiatement
-GET  /jobs/{id} → poll pour le résultat
+POST /analyze   -> retourne { job_1 } immédiatement
+POST /analyze   -> retourne { job_2 } immédiatement
+...
+POST /analyze   -> retourne { job_100 } immédiatement
+
+GET  /jobs/{1} -> poll pour avoir le résultat
+GET  /jobs/{2} -> poll pour avoir le résultat
+...
+GET  /jobs/{100} -> poll pour avoir le résultat
 ```
 
-Un pool de workers Celery consomme une queue Redis.
-Chaque worker fait tourner un graphe LangGraph indépendant.
+Un pool de workers Celery consomme une queue Redis. Chaque worker fait tourner un graphe LangGraph indépendant.
 
-**Parallélisation des outils :**
-Actuellement les nodes tournent en séquence (orchestrateur → scraper → orchestrateur → ...).
-En production, les 3 outils pourraient tourner en parallèle via `Send()` de LangGraph,
-puis l'orchestrateur évalue les résultats combinés en un seul tour.
 
 **Optimisation des coûts LLM :**
 - `MAX_TURNS` borné (défaut 6) garantit un coût maximum par analyse
 - Prompt caching Gemini pour les prompts système répétitifs
 - Redis cache évite les appels SerpApi redondants
+- Model routing : Utiliser un LLM moins cher (`gemini-flash`) (moins cher) pour `node_orchestrator` qui choisit juste le prochain tool (tâche assez simple), et utiliser un LLM plus dispendieux (`gemini-pro`) pour `node_report` qui génère le rapport complet (tâche plus complexe)
+- Output JSON strict : forcer le LLM à répondre en JSON uniquement, sans markdown ni texte autour, réduit les tokens en sortie
+
+
+**Cache intelligent :**
+Avec Redis. Clé de cache : `hash(product + market + tool)` avec TTL de 1h. Si le même produit est analysé 50 fois dans l'heure, SerpApi n'est appelé qu'une seule fois. Les 49 autres requêtes lisent depuis Redis instantanément.
+
+```
+Client 1 : POST /analyze "Nike Air Max Canada"  ->  appel SerpApi  (10s)  -> résultat sauvegardé dans Redis
+Client 2 : POST /analyze "Nike Air Max Canada"  ->  lu depuis Redis        (1ms) -> pas d'appel SerpApi
+....
+Client 100 : POST /analyze "Nike Air Max Canada"  ->  lu depuis Redis        (1ms) -> pas d'appel SerpApi
+```
+
+
+**Parallélisation des tâches d'analyse :**
+Actuellement les nodes tournent en séquence (orchestrateur -> scraper -> orchestrateur -> sentiment -> ...). En production, les 3 outils pourraient tourner en parallèle avec `Send()` de LangGraph, puis l'orchestrateur évalue les résultats combinés en un seul tour. 
+Exemple:
+Au lieu de retourner seulement le prochain outil, on envoie les 3 outils à l'orchestrateur:
+```
+# Sans Send() - l'orchestrateur choisit UN seul tool
+def node_orchestrator(state):
+    return {"next_action": "node_scraper"}  # un seul
+
+# Avec Send() - l'orchestrateur lance les 3 en même temps
+def node_orchestrator(state):
+    return [
+        Send("node_scraper",   state),
+        Send("node_sentiment", state),
+        Send("node_trends",    state),
+    ]
+```
+
 
 ---
 
-## Question 7 — Amélioration continue et A/B testing
+## Question 7 - Amélioration continue et A/B testing
 
 **LLM as Judge :**
-```python
-JUDGE_PROMPT = """
-Evaluate this market analysis report. Score 1-5 on:
-- completeness  : does it answer the user's original question?
-- coherence     : is the recommended price consistent with collected data?
-- actionability : are the recommendations specific and actionable?
+Idem Réponse à la question 5. Après chaque rapport généré par `node_report`, un second appel Gemini évalue automatiquement la qualité du rapport. Il retourne un score 1-5 sur 3 critères : complétude, cohérence, et pertinence des recommandations. Le score est sauvegardé en base de données. Si la moyenne descend sous 3/5 sur les 100 dernières analyses, les prompts sont révisés.
 
-User's prompt: {prompt}
-Report: {report}
-
-Return ONLY JSON: {{ "completeness": N, "coherence": N, "actionability": N }}
-"""
+```
+node_report génère le rapport
+      |
+      v
+Gemini Judge évalue le rapport  ->  { "completeness": 4, "coherence": 3, "actionability": 2 }
+      |
+      v
+Score sauvegardé en DB  ->  moyenne < 3/5 sur 100 analyses  ->  révision des prompts
 ```
 
 **A/B testing des prompts :**
-Le prompt de `node_orchestrator` est versionné dans `prompt_configs`.
-On assigne aléatoirement une variante à chaque requête et compare
-les scores Judge + le nombre moyen de tours sur 100 analyses.
-Moins de tours + meilleur score = meilleure variante.
+Les prompts de `node_orchestrator` sont versionnés dans la table `agent_configs` (voir Q4). On stocke 2 variantes actives en même temps et on assigne aléatoirement une variante à chaque requête. Après X analyses, on compare les scores LLM as Judge et le nombre moyen de tours. Moins de tours + meilleur score = meilleure variante. La variante perdante est désactivée (`is_active = false`).
+
+```
+agent_configs :
+  { name: "orchestrator_v1", prompt: "Tu es un agent...", version: 1, is_active: true }
+  { name: "orchestrator_v2", prompt: "Tu es un expert...", version: 2, is_active: true }
+
+Requête 1  ->  variante v1  ->  score Judge: 4/5, tours: 3
+Requête 2  ->  variante v2  ->  score Judge: 3/5, tours: 4
+...
+X analyses plus tard :
+  v1 : score moyen 4.2/5, 3.1 tours
+  v2 : score moyen 3.4/5, 3.8 tours
+  ->  v2 désactivée (is_active = false), v1 devient le prompt de production
+```
 
 **Feedback utilisateur :**
-```
-POST /feedback  { job_id, rating: 1|-1, comment: "..." }
-```
-Un taux de ratings négatifs > 15% sur 7 jours déclenche une révision des prompts.
 
-**Évolution des capacités :**
-- Court terme : cache des analyses précédentes par produit — l'agent enrichit les données existantes plutôt que de repartir de zéro
-- Moyen terme : l'orchestrateur pose des questions de clarification avant de lancer les outils
-- Long terme : fine-tuning sur les rapports bien notés pour réduire les coûts Gemini
+```
+-- Après chaque analyse (Manuel) --
+Client reçoit et lit le rapport
+  -> soumet score satisfaction 1-10 + commentaire optionnel
+  -> LLM dédié extrait le problème du commentaire
+  -> sauvegardé en DB
+
+-- Chaque X jours (automatique) --
+Système agrège les feedbacks en DB :
+  score satisfaction moyen < 6/10 ou issues récurrentes (> 20%)
+  -> alerte envoyée à l'équipe de développement (ou Client)
+  -> l'équipe (ou Client) révise les prompts et déploie une nouvelle version dans agent_configs
+  -> l'agent utilise la nouvelle version au prochain run  (boucle recommence)
+```
+
+**Faire évoluer les capacités de l'agent :**
+
+- Court terme : ajouter de nouvelles sources de données si les feedbacks montrent que les données collectées sont insuffisantes. (ex: Amazon API en plus de Google Shopping pour doubler le nombre de prix disponibles)
+- Moyen terme : améliorer la compréhension des prompts utilisateurs. (ex: si un prompt est ambigu, l'agent pose des questions de clarification — "Quel produit ? Quel marché ?" — avant de lancer l'analyse)
+- Long terme : fine-tuner le modèle sur les rapports bien notés (score LLM as Judge > 4/5) pour qu'il produise directement des rapports de qualité avec moins de tours.
