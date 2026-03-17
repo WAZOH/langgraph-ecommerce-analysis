@@ -2,7 +2,7 @@
   "prompt": "Analyse le marché canadien pour l'iPhone 17 Pro Max 256 GB. Est-ce une bonne opportunité de revente sur Amazon ?",
   "product": "iPhone 17 Pro Max 256 GB",
   "market": "Canada",
-  "generated_at": "2026-03-17T05:07:16.754578+00:00",
+  "generated_at": "2026-03-17T17:41:49.752120+00:00",
   "report_source": "gemini",
   "tools_used": [
     "scraper",
@@ -14,17 +14,22 @@
     {
       "turn": 1,
       "action": "node_scraper",
-      "reason": "Pour évaluer une opportunité de revente, il est essentiel de connaître le prix actuel du marché, ce qui est l'objectif principal de l'outil 'node_scraper'."
+      "reason": "Pour évaluer une opportunité de revente, la première étape est de connaître le prix actuel du marché."
     },
     {
       "turn": 2,
       "action": "node_sentiment",
-      "reason": "Pour évaluer l'opportunité de revente, j'ai besoin d'analyser le sentiment des clients à l'égard du produit, en plus des prix actuels."
+      "reason": "Pour évaluer la demande des clients et la viabilité de la revente, il est nécessaire d'analyser le sentiment des avis."
     },
     {
       "turn": 3,
       "action": "node_trends",
-      "reason": "Pour analyser l'opportunité de revente, les tendances de prix et de popularité du produit sur le marché canadien sont essentielles. Ces données n'ont pas encore été collectées."
+      "reason": "Pour évaluer l'opportunité de revente, les tendances de prix et de popularité sont essentielles et n'ont pas encore été collectées."
+    },
+    {
+      "turn": 4,
+      "action": "node_report",
+      "reason": "Les données sur les prix, le sentiment et les tendances ont été collectées en quantité suffisante pour générer le rapport final."
     }
   ],
   "data_sources": {
@@ -45,44 +50,39 @@
         "title": "Apple iPhone 17 Pro"
       },
       {
-        "source": "Bell Mobility",
-        "price": 32,
-        "title": "iPhone 17 Pro Max 256 Go avec Paiement intelligents Bell pendant 24 mois, un forfait Ultra de 2 ans + l'Option Flex"
-      },
-      {
         "source": "simplybusinessit.ca",
         "price": 1749,
         "title": "iPhone 17 Pro / Pro Max"
       },
       {
         "source": "Craftbymerlin",
-        "price": 4661.81,
+        "price": 4670.6,
         "title": "iPhone 17 Pro Max 24K Full Gold Edition | Craft by Merlin eSIM-Only / 256 GB"
       },
       {
         "source": "HKairport Shop",
-        "price": 2150.49,
+        "price": 2154.23,
         "title": "Apple iPhone 17 Pro Max (256GB) (Bundle)"
       },
       {
+        "source": "Debillaslux.com",
+        "price": 6170.2,
+        "title": "Custom 24k Gold Engraved iPhone 17 Pro Max Royal 256GB"
+      },
+      {
         "source": "Links",
-        "price": 2831.36,
+        "price": 2846,
         "title": "Mobitel APPLE iPhone 17 Pro Max, 6,9\", 12GB, 256GB, iOS, narančasti"
       },
       {
-        "source": "TopMarket.co.il",
-        "price": 2498.48,
-        "title": "Apple iPhone 17 Pro Max MFYM4 - 6.9\", Smartphone, 12GB, 256GB, Silver"
-      },
-      {
         "source": "Craftbymerlin",
-        "price": 4661.81,
+        "price": 4670.6,
         "title": "iPhone 17 Pro Max 24K Rose Gold Edition | Craft by Merlin eSIM-Only / 256 GB"
       },
       {
-        "source": "Debillaslux.com",
-        "price": 6157.57,
-        "title": "Custom 24k Gold Engraved iPhone 17 Pro Max Royal 256GB"
+        "source": "TopMarket.co.il",
+        "price": 2522.45,
+        "title": "Apple iPhone 17 Pro Max MFYM4 - 6.9\", Smartphone, 12GB, 256GB, Silver"
       },
       {
         "source": "Apple",
@@ -90,39 +90,39 @@
         "title": "Apple iPhone 15 Pro Max"
       },
       {
+        "source": "Craftbymerlin",
+        "price": 4195.66,
+        "title": "iPhone 17 Pro Max Cosmic Black - Limited Edition Luxury Physical SIM + eSIM / 256 GB"
+      },
+      {
         "source": "TopMarket.co.il",
-        "price": 2498.48,
+        "price": 2522.45,
         "title": "Apple iPhone 17 Pro Max MFYN4 - 6.9\", Smartphone, 12GB, 256GB, Cosmic Orange"
       },
       {
-        "source": "Craftbymerlin",
-        "price": 4757.96,
-        "title": "iPhone 17 Pro Max Crystal Silver Edition | Craft by Merlin Physical SIM + eSIM / 256 GB"
-      },
-      {
-        "source": "TopMarket.co.il",
-        "price": 2498.48,
-        "title": "Apple iPhone 17 Pro Max MFYP4 - 6.9\", Smartphone, 12GB, 256GB, Deep Blue"
-      },
-      {
         "source": "CustomPaperClips",
-        "price": 1330.33,
+        "price": 1333.06,
         "title": "Iphone 17 pro Max 256gb unlocked"
       },
       {
         "source": "Craftbymerlin",
-        "price": 3899.69,
-        "title": "iPhone 17 Pro Max Cosmic Black - Limited Edition Luxury eSIM-Only / 256 GB"
+        "price": 3825.27,
+        "title": "iPhone 17 Pro Max 24K Edge of Gold | Craft by Merlin 256 GB"
+      },
+      {
+        "source": "TopMarket.co.il",
+        "price": 2522.45,
+        "title": "Apple iPhone 17 Pro Max MFYP4 - 6.9\", Smartphone, 12GB, 256GB, Deep Blue"
       },
       {
         "source": "Best Buy Canada Marketplace",
-        "price": 1364.92,
+        "price": 1343.98,
         "title": "Apple iPhone 16 Pro Max"
       },
       {
         "source": "Craftbymerlin",
-        "price": 4469.88,
-        "title": "iPhone 17 Pro Max Crystal Blue Edition | Craft by Merlin eSIM-Only / 256 GB"
+        "price": 4478.31,
+        "title": "iPhone 17 Pro Max Crystal Orange Edition | Craft by Merlin eSIM-Only / 256 GB"
       },
       {
         "source": "Fido",
@@ -131,8 +131,13 @@
       },
       {
         "source": "Craftbymerlin",
-        "price": 4469.88,
-        "title": "iPhone 17 Pro Max Crystal Orange Edition | Craft by Merlin eSIM-Only / 256 GB"
+        "price": 4766.93,
+        "title": "iPhone 17 Pro Max Crystal Silver Edition | Craft by Merlin Physical SIM + eSIM / 256 GB"
+      },
+      {
+        "source": "telus.com",
+        "price": 2415,
+        "title": "Apple iPhone 17 Pro Max 1 TB, Deep Blue – with Plan (2 year term)"
       }
     ],
     "reviews": [
@@ -140,73 +145,90 @@
       "Good for Nothing — Bought the US version. After few weeks of usage,not impressed. Nothing special,even camera isnt that great especially in terms of colour,its inaccurate,but sharpness its fantastic,devie heats up a lot",
       "Powerful, intuitive, creative, reliable and PREMIUM❤️ — The ultimate powerhouse for creators & busy moms ❤️\nI’be using the iPhone 16 Pro Max in Natural Titanium for a few weeks now, and as a content creator and mother, it has quickly become my right hand. ",
       " — Performance:10 / 10 (Improved CPU and GPU performance)\nBest Feature:Powerful A18 Pro Chip, Advanced Phoyo and Video System Capabilities, Larger Display, New Action Button, Excellent Battery Life, Came",
-      "Screen not responding to touch — I received the phone this past Monday (today is Thursday), it seemed to be in great condition and worked well. I was happy that there was already a glass screen protector on it. Yesterday I noticed it"
+      "Screen not responding to touch — I received the phone this past Monday (today is Thursday), it seemed to be in great condition and worked well. I was happy that there was already a glass screen protector on it. Yesterday I noticed it",
+      "A powerful and premium smartphone with exceptional performance, long battery life, and a stunning titanium design. — The iPhone 16 Pro Max delivers an outstanding premium experience. The natural titanium design feels incredibly solid yet lightweight, giving the phone a refined and durable feel. Performance is extrem",
+      "Very disappointed with the iPhone 15 Pro Max battery life — Less than 2 years ago we decided to upgrade our Apple iPhone 12 Pro Max to the Apple iPhone 15 Pro Max. The battery life on the 15 Pro Max is terrible. Right now I have a cycle count of 505 and the ma",
+      "A perfectly designed powerhouse with improved comfort, easy setup, and impressive durability 🤩🤩😇😇🥰🥰🫠 — The design of the iPhone 15 Pro Max in Natural Titanium is absolutely stunning and feels incredibly premium. I was impressed by the ergonomics; the titanium frame makes the phone much lighter and more",
+      "up: A durable, lightweight powerhouse with excellent battery life and ample 256GB storage that stands the test of time. — I’ve owned my iPhone 15 Pro Max in White Titanium for nearly two years now and haven't encountered a single problem.The titanium design makes it feel incredibly lightweight and comfortable to hold, wh",
+      "Excellent Condition! — Bought an iPhone 15 Pro Max, 512Gb, excellent condition about a month ago. It’s taken me a month to write this review because I had to test everything out extensively and make sure everything works pe",
+      "Power phone with excellent design — I’ve been using the iPhone 15 Pro Max for 2 years already, and it’s a big step up from my older iPhone. The titanium build makes it feel lighter than I expected for such a large phone and the screen i",
+      "iPhone 15 Pro Max — Day4 of having my phone from these guys, I noticed I do have to charge it like almost twice a day just barely within the 24 hour. Period I have to throw it back on the charger depending on how much Im",
+      "IPhone 17 Pro Max…just go get ya one!!! — Love, Love, Love the new 17 pro max!!! I had a 13 pro max and it was also a great phone…matter of fact, it was very hard to give up! After doing my research, and with the awesome Verizon trade in offe",
+      "iPhone 17 Pro Max — The iPhone 17 Pro Max is a powerhouse device that pushes the limits of smartphone technology. Its sleek titanium design feels premium yet lightweight, and the new edge-to-edge micro‑OLED display is st",
+      " — Performance:superb\nProduct Quality:Authentic iPhone\nBest Feature:8x zoom, AI, call blocking, Camera,\n\nI bought this on 12.12 and I got this for only **,200 Thanks for shopee's big discounts during tha",
+      "Beautiful design but scratches easily — I just got it today. Very nice design and feel with the big bump, which finally doesn’t rock on the table and has way better sustained performance and battery life. With the vapor chamber cooling, it ",
+      " — Performance:Very Great\nQuality:Original New MYSet\n\nComing from my old phone I feel the difference: apps open faster, scroll smoother, camera results noticeably sharper, battery lasts longer into the e",
+      " — Product Quality:1000/10\nPerformance:1000/10\nBest Feature:everything\n\nI can honestly say it’s more than just a phone, it’s a statement piece. The design, performance, and camera system are all top-tier",
+      "Superb Battery; Superb Phone — When I say I love this phone so much, I mean it!!!! After my 14 Pro went out on me in the summer after only having it for under 2 years, I downgraded to a 12 to hold me over for a few months & to stay"
     ],
     "trends": [
       "L'intérêt de recherche est EN HAUSSE (données précédentes nulles).",
-      "Pic d'intérêt maximum (100/100) observé la semaine du Dec 14 – 20, 2025.",
+      "Pic d'intérêt maximum (100/100) observé la semaine du Nov 9 – 15, 2025.",
       "Produit récent ou niche : 92% des semaines ont un intérêt nul — les données sont concentrées sur 4 semaine(s).",
       "Regain d'intérêt récent après une période de silence (4 semaines précédentes à 0).",
-      "Déclin post-lancement : l'intérêt a fortement chuté depuis le pic (100/100 → moy. 4/100)."
+      "Déclin post-lancement : l'intérêt a fortement chuté depuis le pic (100/100 → moy. 7/100)."
     ]
   },
   "insights": {
     "intent": "market_opportunity",
-    "executive_summary": "Le marché canadien de l'iPhone 17 Pro Max 256 GB ne représente pas une bonne opportunité de revente sur Amazon pour un nouvel entrant. L'intérêt de recherche a fortement décliné après le pic de lancement de décembre 2025, et les marges de revente sont minces en raison de la présence de grands détaillants et de revendeurs existants sur la marketplace d'Amazon.",
-    "market_score": 3,
-    "market_score_explanation": "Le score est faible en raison du déclin de l'intérêt de recherche après le pic de lancement. Le marché est saturé par les détaillants officiels et les revendeurs existants sur la marketplace (comme Best Buy Canada), rendant les marges de revente difficiles à justifier. La volatilité des prix et la concurrence rendent l'investissement risqué pour un nouvel acteur.",
+    "executive_summary": "L'opportunité de revente sur Amazon pour l'iPhone 17 Pro Max au Canada est très spéculative et risquée. Bien qu'il y ait eu un pic de demande initial très élevé, l'intérêt du marché a chuté rapidement. La concurrence est forte, et la rentabilité dépendra entièrement de la capacité à s'approvisionner à un prix nettement inférieur à la moyenne du marché, en profitant de l'arbitrage de prix entre les détaillants officiels et les revendeurs tiers.",
+    "market_score": 4,
+    "market_score_explanation": "Le marché est caractérisé par une forte volatilité post-lancement. Le pic d'intérêt initial est élevé, mais la chute rapide de la demande (de 100 à 7) réduit considérablement la fenêtre de profit. La large disparité des prix de vente indique une concurrence intense et des marges incertaines pour les revendeurs tiers.",
+    "pricing": {
+      "min": 1239,
+      "max": 6170.2,
+      "average": 1850,
+      "recommendation": 1900,
+      "recommendation_reason": "Le prix de l'iPhone 17 Pro Max varie considérablement entre le prix de base d'Apple (1239 $) et les prix des détaillants/opérateurs (jusqu'à 2415 $). Une stratégie de revente sur Amazon devrait viser un prix compétitif, légèrement supérieur au prix de Best Buy (1749,99 $) mais inférieur aux prix des opérateurs, pour capturer les acheteurs qui ne veulent pas s'engager avec un forfait ou qui manquent l'inventaire des grands détaillants."
+    },
     "sentiment": {
       "NPS": 6,
       "label": "neutral",
       "positives": [
-        "Puissance et performance exceptionnelles (A18 Pro Chip)",
-        "Design premium en titane et sensation de légèreté",
-        "Autonomie de batterie 'peace of mind'",
-        "Système photo et vidéo avancé"
+        "Le design est 'PREMIUM' et le coloris 'Desert Titanium' est très apprécié.",
+        "Performance A18 Pro Chip 'fantastique' et capacités photo/vidéo avancées.",
+        "Durabilité et sensation 'légère' du design en titane."
       ],
       "negatives": [
-        "Problèmes de surchauffe (device heats up a lot)",
-        "Inexactitude des couleurs de l'appareil photo",
-        "Problèmes d'écran tactile (Screen not responding to touch)",
-        "Autonomie de batterie décevante sur les modèles Pro Max précédents (iPhone 15 Pro Max)"
+        "Le produit chauffe 'a lot' (beaucoup).",
+        "La batterie du modèle précédent (15 Pro Max) est jugée 'terrible' par certains utilisateurs, créant des inquiétudes pour les nouveaux modèles.",
+        "La caméra n'est pas 'that great' en termes de couleur, jugée 'inaccurate'."
       ]
     },
     "competitive_analysis": {
       "key_players": [
+        "Apple",
         "Best Buy Canada",
         "Staples Canada",
-        "Apple Canada",
-        "Bell Mobility",
         "Fido",
-        "Best Buy Canada Marketplace"
+        "Telus",
+        "Craftbymerlin (revendeur tiers)",
+        "simplybusinessit.ca (revendeur tiers)"
       ],
-      "market_share": {
-        "Best Buy Canada Marketplace": 1364.92,
-        "Apple": 1239,
-        "Staples Canada": 1599.99,
-        "Fido": 2199
-      }
+      "market_share": {}
     },
     "trends": {
-      "popularity_score": 2,
-      "popularity_explanation": "L'intérêt de recherche est en déclin constant depuis le pic de lancement de décembre 2025 (100/100 à 4/100). Le produit n'est plus dans sa phase de haute demande initiale.",
+      "popularity_score": 4,
+      "popularity_explanation": "L'intérêt de recherche a atteint un pic de 100/100 lors de la semaine de lancement (Nov 9-15), mais a chuté à une moyenne de 7/100 dans les semaines suivantes. Cela indique une demande initiale intense suivie d'un déclin rapide.",
       "momentum": "declining",
-      "peak_season": "Décembre 2025 (période de lancement)"
+      "peak_season": "Novembre 2025 (période de lancement)",
+      "price_evolution": "stable"
     },
     "opportunities": [
-      "Arbitrage ciblé : rechercher des offres promotionnelles spécifiques chez les opérateurs (Bell, Fido) ou les détaillants traditionnels (Staples, Best Buy) qui pourraient créer une marge temporaire pour la revente, bien que ces marges soient généralement faibles.",
-      "Marché secondaire des produits reconditionnés : L'opportunité pourrait se présenter davantage dans la revente d'unités d'occasion ou reconditionnées à mesure que le modèle vieillit."
+      "Arbitrage de prix : la forte disparité entre le prix Apple (1239 $) et les prix des revendeurs/opérateurs (jusqu'à 2415 $) offre une opportunité de marge si l'approvisionnement est optimisé.",
+      "Forte demande initiale : la période de pic (Nov 9-15) est propice à la revente rapide avec des marges élevées.",
+      "Potentiel sur les marketplaces : certains acheteurs évitent les forfaits opérateurs et préfèrent les marketplaces, créant un public cible pour la revente."
     ],
     "risks": [
-      "Concurrence féroce des détaillants officiels et des transporteurs qui contrôlent les prix et les promotions.",
-      "Déclin rapide de l'intérêt de recherche post-lancement, entraînant une faible demande de revente sur Amazon.",
-      "Volatilité des prix : Le prix peut être facilement dévalué par les promotions des transporteurs ou les baisses de prix officielles d'Apple.",
-      "Faibles marges : Les prix sur la marketplace sont déjà proches des prix de gros/détail, ce qui rend la revente à profit difficile."
+      "Concurrence élevée : un grand nombre de revendeurs tiers (Craftbymerlin, TopMarket.co.il, etc.) sont présents, rendant la visibilité difficile sur Amazon.",
+      "Volatilité des prix : la chute rapide de l'intérêt après le lancement entraîne une pression à la baisse sur les prix de revente.",
+      "Contrôle de l'inventaire : les prix les plus bas sont généralement réservés à l'inventaire Apple, souvent difficile à obtenir en quantité pour la revente.",
+      "Problèmes de qualité potentiels : les retours utilisateurs mentionnent des problèmes de surchauffe et des inquiétudes persistantes concernant la durée de vie de la batterie."
     ],
     "recommendations": [
-      "Éviter d'investir massivement dans des stocks neufs à ce stade. La période de forte demande est terminée.",
-      "Surveiller les baisses de prix importantes ou les promotions des transporteurs qui pourraient offrir une opportunité d'arbitrage à court terme.",
-      "Reconsidérer le segment de marché : Se concentrer sur des niches de produits reconditionnés ou d'accessoires plutôt que sur la revente d'unités neuves."
+      "Ne pas s'approvisionner à un prix supérieur à celui des grands détaillants comme Best Buy. La marge de revente est faible si le prix d'achat dépasse 1500 $.",
+      "Prioriser la rapidité de revente : l'opportunité est concentrée sur une courte période après le pic de lancement. Ne pas stocker le produit sur le long terme.",
+      "Mettre en avant les aspects positifs des avis (performances, design) et être prêt à gérer les questions concernant la surchauffe ou la batterie."
     ]
   },
   "errors": []

@@ -1,10 +1,8 @@
 """
-tools.py
---------
 Les 3 outils de collecte de donnees :
-  1. fetch_scraper()   — SerpApi Google Shopping  (mock si cle manquante)
-  2. fetch_sentiment() — SerpApi Google Shopping Reviews (mock si cle manquante)
-  3. fetch_trends()    — SerpApi Google Trends     (mock si cle manquante)
+  1. fetch_scraper()   — SerpApi Google Shopping  (mock si clé manquante)
+  2. fetch_sentiment() — SerpApi Google Shopping Reviews (mock si clé manquante)
+  3. fetch_trends()    — SerpApi Google Trends     (mock si clé manquante)
 
 Chaque fonction retourne un dict avec exactement la meme structure,
 que les donnees viennent de la vraie API ou du mock :
@@ -36,9 +34,8 @@ log = logging.getLogger(__name__)
 @lru_cache(maxsize=32)
 def _fetch_shopping_raw(product: str, market: str, market_code: str = "CA") -> tuple:
     """
-    Appel Google Shopping partage entre scraper et reviews (sentiment).
-    Mis en cache par (product, market, market_code) pour eviter les appels API dupliques
-    dans le meme pipeline run.
+    Appel Google Shopping partagé entre fetch_scraper et fetch_sentiment.
+    Mis en cache par (product, market, market_code) pour éviter les appels API dupliqués dans le meme pipeline run.
     Retourne un tuple de dicts (immuable, safe pour le cache).
     """
     from serpapi import GoogleSearch
@@ -47,14 +44,12 @@ def _fetch_shopping_raw(product: str, market: str, market_code: str = "CA") -> t
         "engine":   "google_shopping",
         "q":        product,
         "gl":       market_code.lower(),
-        # "hl":       "en",
         "api_key":  cfg.serpapi_key,
         "num":      cfg.max_serp_results,
     }).get_dict()
 
     shopping = results.get("shopping_results", [])
     log.info(f"[google_shopping] {len(shopping)} résultats pour '{product}' / '{market}' ({market_code}) (cache miss)")
-    # log.info(f"Shopping = {shopping}")
 
     return tuple(shopping)
 
@@ -194,9 +189,9 @@ def _serpapi_reviews(product: str, market: str, market_code: str = "CA") -> dict
 
 def fetch_trends(product: str, market: str, country_code: str = "CA") -> dict:
     """
-    Analyse les tendances de prix et de popularite via SerpApi Google Trends.
-    Retourne une liste de strings decrivant les tendances observees.
-    Fallback mock si la cle SerpApi est absente.
+    Analyse les tendances de prix et de popularité via SerpApi Google Trends.
+    Retourne une liste de strings decrivant les tendances observées.
+    Fallback mock si la clé SerpApi est absente.
     country_code : code ISO 3166-1 alpha-2 fourni par l'orchestrateur (ex: "CA", "US", "FR").
     """
     if cfg.has_serpapi():

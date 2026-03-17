@@ -8,7 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copier le code source
 COPY app/ ./app/
-COPY test/ ./test/
 COPY index.html .
 
 # Utilisateur non-root pour la sécurité

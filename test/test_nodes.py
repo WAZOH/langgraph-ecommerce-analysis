@@ -14,6 +14,7 @@ from app.nodes import node_orchestrator, node_scraper, node_sentiment, node_tren
 SAMPLE_PROMPT  = "Analyse le marche canadien pour les Nike Air Max 90. Je veux savoir si c'est rentable de les revendre en ligne."
 SAMPLE_PRODUCT = "Nike Air Max 90"
 SAMPLE_MARKET  = "Canada"
+SAMPLE_MARKET_CODE = "CA"
 
 
 @pytest.fixture
@@ -38,9 +39,9 @@ def base_state() -> dict:
 
 @pytest.fixture
 def populated_state(base_state) -> dict:
-    base_state["scraper_data"]   = fetch_scraper(SAMPLE_PRODUCT, SAMPLE_MARKET)
-    base_state["sentiment_data"] = fetch_sentiment(SAMPLE_PRODUCT)
-    base_state["trends_data"]    = fetch_trends(SAMPLE_PRODUCT, SAMPLE_MARKET)
+    base_state["scraper_data"]   = fetch_scraper(SAMPLE_PRODUCT, SAMPLE_MARKET, SAMPLE_MARKET_CODE)
+    base_state["sentiment_data"] = fetch_sentiment(SAMPLE_PRODUCT, SAMPLE_MARKET, SAMPLE_MARKET_CODE)
+    base_state["trends_data"]    = fetch_trends(SAMPLE_PRODUCT, SAMPLE_MARKET, SAMPLE_MARKET_CODE)
     return base_state
 
 

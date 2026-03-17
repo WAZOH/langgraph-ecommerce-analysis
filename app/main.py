@@ -1,12 +1,11 @@
 """
-main.py
--------
 Point d'entree de l'API REST (FastAPI).
 
 Routes :
-  GET  /health   -> verifie que le service tourne
-  POST /analyze  -> lance une analyse a partir d'un prompt libre
-  GET  /         -> infos de base
+  GET  /health          -> verifie que le service tourne
+  POST /analyze         -> lance une analyse complete (reponse JSON)
+  POST /analyze/stream  -> lance une analyse avec streaming SSE (node par node)
+  GET  /                -> index.html avec interface de test manuel
 
 Exemple de prompt :
   "Analyse le marche canadien pour les ecouteurs Sony WH-1000XM5.
@@ -109,8 +108,9 @@ def health():
 @app.post("/analyze/stream", tags=["Analysis"])
 def analyze_stream(request: AnalyzeRequest):
     """
-    Lance une analyse avec streaming SSE — chaque node LangGraph emet un event.
-    Utiliser avec fetch + ReadableStream (EventSource ne supporte pas POST).
+    Lance une analyse avec streaming SSE. Chaque node LangGraph emet un event.
+    Utiliser avec fetch + ReadableStream.
+    ReadableStream permet de traiter les events au fur et a mesure sans attendre la fin de l'analyse complete (notamment pour index.html).
     """
     log.info(f"POST /analyze/stream — prompt='{request.prompt[:80]}...'")
 
@@ -188,13 +188,13 @@ def analyze_stream(request: AnalyzeRequest):
 @app.post("/analyze", response_model=AnalyzeResponse, tags=["Analysis"])
 def analyze(request: AnalyzeRequest):
     """
-    Lance une analyse de marche complete a partir d'un prompt libre.
+    Lance une analyse de marche complète à partir d'un prompt libre.
 
     L'agent va :
-      1. Extraire le produit et le marche depuis le prompt
-      2. Decider quels outils sont necessaires selon la demande
-      3. Appeler les outils un par un, evaluer apres chaque appel
-      4. Generer un rapport strategique adapte a la demande
+      1. Extraire le produit et le marché/pays depuis le prompt
+      2. Decider quels outils sont nécessaires selon la demande
+      3. Appeler les outils un par un, évaluer apràs chaque appel
+      4. Génerer un rapport strategique adapté à la demande
     """
     log.info(f"POST /analyze — prompt='{request.prompt[:80]}...'")
     start = time.perf_counter()

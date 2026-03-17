@@ -104,7 +104,7 @@ def _fallback_rule_based_insights(state: dict) -> dict:
 
 
 # -------------------------------------------------
-# TOOL SENTIMENT
+# TOOL SCRAPER
 # -------------------------------------------------
 
 def _fallback_mock_scraper(product: str, market: str) -> dict:

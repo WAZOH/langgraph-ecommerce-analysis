@@ -1,19 +1,11 @@
 """
-config.py
----------
-Lit les variables d'environnement depuis le fichier .env (ou l'environnement
-système). Pas de librairie externe — juste os.getenv.
-
-Utilisation :
-    from app.config import cfg
-    print(cfg.gemini_api_key)
+Lit les variables d'environnement depuis le fichier .env
 """
 
 import os
 from dotenv import load_dotenv  # python-dotenv charge le fichier .env
 
 # Charge le fichier .env s'il existe (en développement local).
-# En production Docker, les variables sont injectées directement.
 load_dotenv()
 
 

@@ -5,7 +5,7 @@ Les nodes du graphe LangGraph :
 
   node_orchestrator  — cerveau de l'agent : extrait le contexte, decide
                        quels tools appeler, evalue apres chaque appel,
-                       boucle jusqu'a satisfaction ou max_turns atteint
+                       boucle jusqu'à satisfaction ou max_turns (MAX_TURNS dans .env) atteint
   node_scraper       — collecte les prix (SerpApi Shopping)
   node_sentiment     — collecte les avis Google Shopping Reviews (SerpApi)
   node_trends        — analyse tendances prix/popularite (SerpApi Trends)
@@ -34,6 +34,14 @@ log = logging.getLogger(__name__)
 
 MAX_TURNS = cfg.max_turns  # protection contre boucle infinie, configurable via .env
 
+# Initialisation Gemini une seule fois au chargement du module
+if cfg.has_gemini():
+    genai.configure(api_key=cfg.gemini_api_key)
+    _gemini_model = genai.GenerativeModel(cfg.gemini_model)
+else:
+    _gemini_model = None
+
+
 # -------------------------------------------------
 # NODE ORCHESTRATEUR
 # -------------------------------------------------
@@ -43,15 +51,15 @@ def node_orchestrator(state: dict) -> dict:
     Cerveau de l'agent. Appele a chaque tour de boucle.
 
     Tour 1 (state["turn"] == 0) :
-      - Extrait le produit et le marche depuis le prompt utilisateur
-      - Decide quel premier tool appeler
+      - Extrait le produit et le marché depuis le prompt utilisateur
+      - Décide quel premier tool appeler
 
     Tours suivants :
-      - Evalue les donnees deja collectees (A parir de State)
-      - Decide si c'est suffisant pour generer le rapport
-      - Sinon, choisit le prochain tool a appeler
+      - Évalue les données deja collectées (À parir de State)
+      - Décide si c'est suffisant pour génerer le rapport (node_report)
+      - Sinon, choisit le prochain tool à appeler
 
-    Input  : state["prompt"], state["turn"], state["scraper_data"], ...
+    Input  : state
     Output : {
         "product":          str, # extrait du prompt (tour 1 seulement, lorsque turn==0)
         "market":           str, # extrait du prompt (tour 1 seulement, lorsque turn==0)
@@ -71,7 +79,7 @@ def node_orchestrator(state: dict) -> dict:
             decision = _gemini_orchestrate(state)
             log.info(f"[node_orchestrator] Decision : {decision['next_action']} — {decision['last_reasoning']}")
             market = decision.get("market", state.get("market", ""))
-            return {
+            update = {
                 "product":          decision.get("product", state.get("product", "")),
                 "market":           market,
                 "market_code":        decision.get("market_code", state.get("market_code", _fallback_market_code(market))),
@@ -79,6 +87,15 @@ def node_orchestrator(state: dict) -> dict:
                 "last_reasoning":   decision["last_reasoning"],
                 "turn":             turn + 1,
             }
+            # Forcer le remplissage du reasoning_log à chaque tour pour tracer les décisions 
+            # même à la fin quand next_action est node_report
+            if decision["next_action"] == "node_report":
+                update["reasoning_log"] = state.get("reasoning_log", []) + [{
+                    "turn":   turn + 1,
+                    "action": decision["next_action"],
+                    "reason": decision["last_reasoning"],
+                }]
+            return update
         except Exception as e:
             log.warning(f"[node_orchestrator] Gemini failed ({e}), fallback.")
             state["errors"].append(f"orchestrator_turn{turn}: {e}")
@@ -88,16 +105,25 @@ def node_orchestrator(state: dict) -> dict:
     product = state.get("product") or _fallback_extract_from_prompt(state.get("prompt", ""))
     market  = state.get("market")  or _fallback_extract_market_from_prompt(state.get("prompt", ""))
     market_code = state.get("market_code") or _fallback_market_code(market)
-    fallback_plan = ["scraper", "sentiment", "trends", "report"]
+    fallback_plan = ["node_scraper", "node_sentiment", "node_trends", "node_report"]
     next_action = fallback_plan[min(turn, len(fallback_plan) - 1)]
-    return {
+    reasoning = f"Fallback plan — step {turn + 1}"
+    update = {
         "product":        product,
         "market":         market,
         "market_code":      market_code,
         "next_action":    next_action,
-        "last_reasoning": f"Fallback plan — step {turn + 1}",
+        "last_reasoning": reasoning,
         "turn":           turn + 1,
     }
+    # Forcer reasoning_log à se remplir même en fallback pour tracer les décisions
+    if next_action == "node_report":
+        update["reasoning_log"] = state.get("reasoning_log", []) + [{
+            "turn":   turn + 1,
+            "action": next_action,
+            "reason": reasoning,
+        }]
+    return update
 
 
 def _gemini_orchestrate(state: dict) -> dict:
@@ -107,9 +133,6 @@ def _gemini_orchestrate(state: dict) -> dict:
     Tour 1 : extrait product/market ET choisit le premier tool.
     Tours suivants : evalue les donnees et choisit la prochaine action.
     """
-    genai.configure(api_key=cfg.gemini_api_key)
-    model = genai.GenerativeModel(cfg.gemini_model)
-
     turn = state.get("turn", 0)
     collected = _summarize_collected(state)
 
@@ -161,7 +184,7 @@ def _gemini_orchestrate(state: dict) -> dict:
             Rules:
             - If turn >= {MAX_TURNS}, you MUST choose "node_report".
             - "node_sentiment" returns at most ~7 reviews — this is a platform limit, not an error. 7 reviews is sufficient for sentiment analysis; do NOT call it again.
-            - "node_trends" returns at most ~5 insights — this is a platform limit, not an error. 5 insights is sufficient for trend analysis; do NOT call it again.
+            - "node_trends" returns at most ~2 insights — this is a platform limit, not an error. 2 insights is sufficient for trend analysis; do NOT call it again.
 
             IMPORTANT: Write ALL text fields (last_reasoning, etc.) in French.
 
@@ -172,7 +195,7 @@ def _gemini_orchestrate(state: dict) -> dict:
             }}
         """
 
-    response = model.generate_content(prompt)
+    response = _gemini_model.generate_content(prompt)
     text = (
         response.text.strip()
         .removeprefix("```json").removeprefix("```")
@@ -185,7 +208,7 @@ def _gemini_orchestrate(state: dict) -> dict:
 def _summarize_collected(state: dict) -> str:
     """
     Construit un resume textuel des donnees deja collectees pour l'orchestrateur.
-    Utilisé par l'orchestrateur pour evaluer si c'est suffisant.
+    Utilisé par l'orchestrateur pour évaluer si chaque tour est suffisant.
     """
     parts = []
 
@@ -198,7 +221,6 @@ def _summarize_collected(state: dict) -> str:
     else:
         parts.append("- PRICES: not collected yet")
 
-    exhausted = state.get("exhausted_tools", [])
     if state.get("sentiment_data", {}).get("data"):
         n = len(state["sentiment_data"]["data"])
         note = " (EXHAUSTED — do NOT call the same tool again, no more data available)" if "sentiment" in exhausted else ""
@@ -223,8 +245,8 @@ def _summarize_collected(state: dict) -> str:
 
 def _check_exhausted(state: dict, tool_name: str, data_key: str) -> dict | None:
     """
-    Si des données existent déjà pour cet outil, le marqué comme épuisé
-    et retourne le dict de mise à jour. Sinon retourne None.
+    Principalement pour limiter les calls API: Si il n'y a plus de données à collecter pour cet outil, 
+    le marqué comme épuisé et retourne le dict de mise à jour. Sinon retourne None.
     """
     if not state.get(data_key, {}).get("data"):
         return None
@@ -242,11 +264,6 @@ def _check_exhausted(state: dict, tool_name: str, data_key: str) -> dict | None:
 def node_scraper(state: dict) -> dict:
     """
     Collecte les prix actuels via SerpApi Google Shopping.
-    Si des données existent déjà, re-fetch avec un num plus grand et fusionne
-    en dédoublonnant par (source, price).
-
-    Input  : state["product"], state["market"]
-    Output : {"scraper_data": {"source": ..., "data": [...]}}
     """
     if result := _check_exhausted(state, "scraper", "scraper_data"):
         return result
@@ -265,10 +282,6 @@ def node_scraper(state: dict) -> dict:
 def node_sentiment(state: dict) -> dict:
     """
     Collecte les avis Google Shopping Reviews via SerpApi.
-    Si des données existent déjà, re-fetch et fusionne en dédoublonnant par texte exact.
-
-    Input  : state["product"]
-    Output : {"sentiment_data": {"source": ..., "data": [...]}}
     """
     if result := _check_exhausted(state, "sentiment", "sentiment_data"):
         return result
@@ -287,10 +300,6 @@ def node_sentiment(state: dict) -> dict:
 def node_trends(state: dict) -> dict:
     """
     Analyse les tendances de prix et popularite via SerpApi Trends.
-    Si des données existent déjà, re-fetch et fusionne en dédoublonnant par texte exact.
-
-    Input  : state["product"], state["market"]
-    Output : {"trends_data": {"source": ..., "data": [...]}}
     """
     if result := _check_exhausted(state, "trends", "trends_data"):
         return result
@@ -312,9 +321,6 @@ def node_report(state: dict) -> dict:
 
     Si Gemini est disponible : analyse profonde + recommandations.
     Sinon : fallback rule-based sur les stats brutes.
-
-    Input  : state["prompt"], state["scraper_data"], ...
-    Output : {"report": {...}}
     """
     log.info("[node_report] Generation du rapport...")
 
@@ -338,9 +344,10 @@ def node_report(state: dict) -> dict:
 
 
 def _gemini_insights(state: dict) -> dict:
-    genai.configure(api_key=cfg.gemini_api_key)
-    model = genai.GenerativeModel(cfg.gemini_model)
-    response = model.generate_content(_build_dynamic_report_prompt(state))
+    """
+        Nettoie et formate la réponse de Gemini pour n'avoir que l'objet JSON du rapport final.
+    """
+    response = _gemini_model.generate_content(_build_dynamic_report_prompt(state))
     text = (
         response.text.strip()
         .removeprefix("```json").removeprefix("```")
@@ -351,19 +358,16 @@ def _gemini_insights(state: dict) -> dict:
 
 def _build_dynamic_report_prompt(state: dict) -> str:
     """
-    Construit un prompt de rapport adapte dynamiquement a l'intention de l'utilisateur.
+    Construit un prompt de rapport adapte dynamiquement à l'intention de l'utilisateur afin d'aider
+    Gemini à comprendre ce que l'utilisateur a réellement demandé.
 
-    Contrairement a _build_report_prompt qui impose une structure JSON fixe,
-    cette fonction laisse Gemini determiner quelles sections sont pertinentes
-    selon ce que l'utilisateur a reellement demande.
-
-    Intentions detectees :
+    Intentions détectées :
       - buy_decision       : l'utilisateur veut savoir s'il doit acheter
-      - pricing_strategy   : l'utilisateur cherche a fixer/optimiser un prix
-      - market_opportunity : l'utilisateur evalue une opportunite de marche
-      - sentiment_analysis : l'utilisateur veut connaitre l'opinion de la communaute
+      - pricing_strategy   : l'utilisateur cherche à fixer/optimiser un prix
+      - market_opportunity : l'utilisateur évalue une opportunité de marche
+      - sentiment_analysis : l'utilisateur veut connaitre l'opinion de la communauté
       - competitive_analysis : l'utilisateur analyse la concurrence
-      - general_analysis   : demande generique
+      - general_analysis   : demande générale d'analyse de marché
     """
     sections = []
 
@@ -446,7 +450,7 @@ def _build_dynamic_report_prompt(state: dict) -> str:
 
 
 def _assemble_report(state: dict, insights: dict, source: str) -> dict:
-    # Reconstruit le journal des decisions de l'orchestrateur
+    # Reconstruit le journal des décisions de l'orchestrateur
     tools_used = []
     if state.get("scraper_data",   {}).get("data"): tools_used.append("scraper")
     if state.get("sentiment_data", {}).get("data"): tools_used.append("sentiment")
@@ -468,7 +472,7 @@ def _assemble_report(state: dict, insights: dict, source: str) -> dict:
         },
         "data_raw": {
             "prices":       state.get("scraper_data",   {}).get("data", []),
-            "reviews": state.get("sentiment_data", {}).get("data", [])[:5],
+            "reviews": state.get("sentiment_data", {}).get("data", []),
             "trends":       state.get("trends_data",    {}).get("data", []),
         },
         "insights": insights,

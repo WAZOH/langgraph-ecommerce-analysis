@@ -1,27 +1,28 @@
 """
-agent.py
---------
 Assemble le graphe LangGraph avec une boucle de reflexion (ReAct).
 
 Flux :
-    START
-      |
-      v
-  node_orchestrator  <- Gemini extrait product/market, choisit le 1er tool
-      |
-      | route_next() : lit state["next_action"]
-      |
-      +---> node_scraper    -> retour a node_orchestrator
-      +---> node_sentiment  -> retour a node_orchestrator
-      +---> node_trends     -> retour a node_orchestrator
-      +---> node_report     -> END
+        START
+            |
+      node_orchestrator  ← (tour 0 : extrait produit/marché)
+            |
+      route_next  → node_scraper (toujours en premier, imposé par le prompt Gemini)
+                          |
+                    log_reasoning
+                          |
+                    node_orchestrator  ← (tours suivants : évalue, décide)
+                          |
+                    route_next  → node_scraper | node_sentiment | node_trends | node_report
+                                        |                |             |            |
+                                  log_reasoning    log_reasoning   log_reasoning   END
+                                        |                |             |            
+                                  node_orchestrator ← ← ← ← ← ← ← ← ← ←
 
 L'orchestrateur tourne en boucle jusqu'à decider "node_report".
-Max 6 tours (= max 2 tours par 3 tools) pour eviter une boucle infinie.
+Max 6 tours (Paramètre MAX_TURNS configuré dans .env) pour éviter une boucle infinie.
 
-La cle du cycle : chaque tool pointe VERS node_orchestrator,
-pas vers node_report. C'est node_orchestrator qui decide
-quand terminer.
+La clé du cycle : chaque tool pointe VERS node_orchestrator (à l'exception de node_report). 
+C'est node_orchestrator qui décide quand terminer.
 """
 
 import logging
@@ -46,14 +47,15 @@ log = logging.getLogger(__name__)
 
 class AgentState(TypedDict):
     """
-    Dict partage entre tous les nodes LangGraph.
+    Le cerveau de l'agent, partagée et mise à jour par tous les nodes du graphe.
+     - node_orchestrator lit et met à jour tous les champs
 
-    Nouveaux champs vs version precedente :
+    Champs importants pour le suivi de l'analyse :
       prompt        : texte libre de l'utilisateur
-      next_action   : decision de l'orchestrateur a chaque tour
+      next_action   : décision de l'orchestrateur à chaque tour
       turn          : compteur de tours (protection boucle infinie)
-      last_reasoning     : derniere justification de l'orchestrateur
-      reasoning_log : historique de toutes les decisions
+      last_reasoning: dernière justification de l'orchestrateur
+      reasoning_log : historique de toutes les décisions
     """
     prompt: str
     product: str
@@ -79,22 +81,14 @@ def route_next(state: AgentState) -> str:
     """
     Lit state["next_action"] et retourne le nom du node suivant.
 
-    Appele par conditional_edges apres node_orchestrator
-    ET apres chaque node de collecte.
+    Appelé par conditional_edges apres node_orchestrator
+    ET après chaque node de collecte.
 
-    "node_report" est la seule sortie qui ne reboucle pas
-    vers node_orchestrator.
+    "node_report" est la seule sortie qui ne reboucle pas vers node_orchestrator.
     """
     action = state.get("next_action", "node_report")
     log.info(f"[route_next] → {action}")
 
-    # mapping = {
-    #     "scraper":   "node_scraper",
-    #     "sentiment": "node_sentiment",
-    #     "trends":    "node_trends",
-    #     "report":    "node_report",
-    # }
-    # return mapping.get(action, "node_report")
     
     # Validation simple : on accepte seulement les 4 actions possibles, sinon on termine
     if action not in ["node_scraper", "node_sentiment", "node_trends", "node_report"]:
@@ -106,9 +100,9 @@ def route_next(state: AgentState) -> str:
 
 def log_reasoning(state: AgentState) -> dict:
     """
-    Node leger qui enregistre la decision de l'orchestrateur
+    Node léger qui enregistre la décision de l'orchestrateur
     dans reasoning_log avant de router vers le tool.
-    Permet de tracer toutes les decisions dans le rapport final.
+    Permet de tracer toutes les décisions dans le rapport final.
     """
     log_entry = {
         "turn":   state.get("turn", 0),
@@ -125,21 +119,7 @@ def log_reasoning(state: AgentState) -> dict:
 
 def build_graph():
     """
-    Construit le graphe avec cycle :
-
-        START
-            |
-      node_orchestrator
-            |
-      (conditional) route_next <--------
-            |                           |
-      +-----+------+-------+            |
-      |     |      |       |            |
-    scraper sent  trends report         |
-      |     |      |       |            |
-      +-----+------+       END          |
-            |                           |
-      log_reasoning     --------------- |
+    Assemble le graphe LangGraph avec les nodes et edges.
     """
     graph = StateGraph(AgentState)
 
@@ -180,7 +160,7 @@ _graph = build_graph()
 
 def run_analysis(prompt: str) -> dict:
     """
-    Lance le pipeline complet a partir d'un prompt libre.
+    Lance le pipeline complet à partir d'un prompt libre.
 
     Exemple :
         report = run_analysis(
