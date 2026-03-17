@@ -67,6 +67,7 @@ class AgentState(TypedDict):
     trends_data: dict
     report: dict
     errors: list
+    exhausted_tools: list  # outils qui ne peuvent plus retourner de nouvelles données
 
 
 # -------------------------------------------------
@@ -199,8 +200,9 @@ def run_analysis(prompt: str) -> dict:
         "scraper_data":   {},
         "sentiment_data": {},
         "trends_data":    {},
-        "report":         {},
-        "errors":         [],
+        "report":           {},
+        "errors":           [],
+        "exhausted_tools":  [],
     }
 
     final_state = _graph.invoke(initial_state)

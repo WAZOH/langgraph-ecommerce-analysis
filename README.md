@@ -17,15 +17,15 @@ curl -X POST http://localhost:8000/analyze \
 POST /analyze { "prompt": "..." }
         │
         ▼
-┌─────────────────────────────────────────────────┐
-│              LangGraph — Boucle ReAct            │
+┌──────────────────────────────────────────────────┐
+│              LangGraph Pipeline                  │
 │                                                  │
 │  node_orchestrator  ← Gemini                     │
 │    │  extrait product/market depuis le prompt    │
 │    │  décide quel tool appeler                   │
 │    │  évalue après chaque appel                  │
 │    │                                             │
-│    ├──► node_scraper   (SerpApi Shopping)        │
+│    ├──► tool 1: node_scraper                     │
 │    │         └──► node_orchestrator              │
 │    │                                             │
 │    ├──► node_sentiment (SerpApi Reviews)         │
@@ -35,13 +35,13 @@ POST /analyze { "prompt": "..." }
 │    │         └──► node_orchestrator              │
 │    │                                             │
 │    └──► node_report    (Gemini)  ──► END         │
-└─────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────┘
         │
         ▼
     JSON Report
 ```
 
-**Pattern ReAct (Reason + Act) :**
+**Pattern:**
 À chaque tour, `node_orchestrator` raisonne sur les données disponibles
 et décide quoi faire ensuite. Il boucle jusqu'à ce que les données soient
 suffisantes pour répondre à la demande, puis route vers `node_report`.
@@ -54,7 +54,7 @@ correspondant prend le relais — la requête ne fail jamais.
 LangGraph modélise l'agent comme un graphe orienté avec support natif des cycles.
 Trois raisons concrètes :
 
-1. **Support des cycles** — `add_edge(tool_node, "node_orchestrator")` crée la boucle ReAct. Sans ça, il faudrait gérer l'état manuellement entre les itérations.
+1. **Support des cycles** — `add_edge(tool_node, "node_orchestrator")` crée la boucle. Sans ça, il faudrait gérer l'état manuellement entre les itérations.
 2. **État partagé entre les tours** — `AgentState` accumule les données. L'orchestrateur voit ce qui a déjà été collecté et prend sa décision en connaissance de cause.
 3. **Routing conditionnel lisible** — `conditional_edges("node_orchestrator", route_next)` exprime clairement que c'est l'orchestrateur qui pilote le flux.
 

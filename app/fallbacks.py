@@ -90,7 +90,7 @@ def _fallback_rule_based_insights(state: dict) -> dict:
 # TOOL SENTIMENT
 # -------------------------------------------------
 
-def _fallback_mock_scraper(product: str, market: str, extra_offset: int = 0) -> dict:
+def _fallback_mock_scraper(product: str, market: str) -> dict:
     currency = "CAD" if "canada" in market.lower() else "USD"
     all_items = [
         {"source": "Amazon",        "price": 159.99, "title": f"{product} — Amazon {currency}"},
@@ -114,8 +114,7 @@ def _fallback_mock_scraper(product: str, market: str, extra_offset: int = 0) -> 
         {"source": "Kijiji",        "price": 110.00, "title": f"{product} (used) — Kijiji {currency}"},
         {"source": "Costco.ca",     "price": 141.99, "title": f"{product} (online) — Costco.ca {currency}"},
     ]
-    # Retourne les items suivants (à partir de l'offset) pour simuler une nouvelle page
-    return {"source": "mock", "data": all_items[extra_offset:]}
+    return {"source": "mock", "data": all_items}
 
 
 
@@ -123,7 +122,7 @@ def _fallback_mock_scraper(product: str, market: str, extra_offset: int = 0) -> 
 # TOOL SENTIMENT
 # -------------------------------------------------
 
-def _fallback_mock_sentiment(product: str, extra_offset: int = 0) -> dict:
+def _fallback_mock_sentiment(product: str) -> dict:
     all_reviews = [
         f"Je viens d'acheter {product}. Honnêtement, le meilleur achat de l'année. Super confortable et bien fini.",
         f"Avis sur {product} après 6 mois d'utilisation : la qualité est toujours excellente, aucun problème constaté.",
@@ -146,14 +145,14 @@ def _fallback_mock_sentiment(product: str, extra_offset: int = 0) -> dict:
         f"Retour produit : le {product} ne convient pas à mon usage. Trop encombrant au quotidien.",
         f"Le {product} est exactement ce que je cherchais. Simple, efficace, durable. Note parfaite.",
     ]
-    return {"source": "mock", "data": all_reviews[extra_offset:]}
+    return {"source": "mock", "data": all_reviews}
 
 
 # -------------------------------------------------
 # TOOL TRENDS
 # -------------------------------------------------
 
-def _fallback_mock_trends(product: str, market: str, extra_offset: int = 0) -> dict:
+def _fallback_mock_trends(product: str, market: str) -> dict:
     region = "Canada" if "canada" in market.lower() else "États-Unis"
     all_insights = [
         f"L'intérêt de recherche pour {product} est EN HAUSSE de +12% sur les 30 derniers jours au {region}.",
@@ -177,5 +176,5 @@ def _fallback_mock_trends(product: str, market: str, extra_offset: int = 0) -> d
         f"Intérêt pour '{product} reconditionné' en hausse de +55% : segment à surveiller.",
         f"Score de popularité estimé à 7.8/10 pour {product} sur le marché {region} actuel.",
     ]
-    return {"source": "mock", "data": all_insights[extra_offset:]}
+    return {"source": "mock", "data": all_insights}
 

@@ -128,8 +128,9 @@ def analyze_stream(request: AnalyzeRequest):
             "scraper_data":   {},
             "sentiment_data": {},
             "trends_data":    {},
-            "report":         {},
-            "errors":         [],
+            "report":           {},
+            "errors":           [],
+            "exhausted_tools":  [],
         }
 
         try:

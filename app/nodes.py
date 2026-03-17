@@ -175,27 +175,32 @@ def _gemini_orchestrate(state: dict) -> dict:
 
 def _summarize_collected(state: dict) -> str:
     """
-    Construit un resume textuel des donnees deja collectees.
-    Utilise par l'orchestrateur pour evaluer si c'est suffisant.
+    Construit un resume textuel des donnees deja collectees pour l'orchestrateur.
+    Utilisé par l'orchestrateur pour evaluer si c'est suffisant.
     """
     parts = []
 
+    exhausted = state.get("exhausted_tools", [])
     if state.get("scraper_data", {}).get("data"):
         prices = [p["price"] for p in state["scraper_data"]["data"]]
+        note = " (EXHAUSTED — do NOT call again, no more data available)" if "scraper" in exhausted else ""
         parts.append(f"- PRICES: {len(prices)} results, avg ${sum(prices)/len(prices):.2f}, "
-                     f"range ${min(prices):.2f}–${max(prices):.2f}")
+                     f"range ${min(prices):.2f}–${max(prices):.2f}{note}")
     else:
         parts.append("- PRICES: not collected yet")
 
+    exhausted = state.get("exhausted_tools", [])
     if state.get("sentiment_data", {}).get("data"):
         n = len(state["sentiment_data"]["data"])
-        parts.append(f"- REVIEWS SENTIMENT: {n} posts collected")
+        note = " (EXHAUSTED — do NOT call the same tool again, no more data available)" if "sentiment" in exhausted else ""
+        parts.append(f"- REVIEWS SENTIMENT: {n} posts collected{note}")
     else:
         parts.append("- REVIEWS SENTIMENT: not collected yet")
 
     if state.get("trends_data", {}).get("data"):
         n = len(state["trends_data"]["data"])
-        parts.append(f"- TRENDS: {n} insights collected")
+        note = " (EXHAUSTED — do NOT call again, no more data available)" if "trends" in exhausted else ""
+        parts.append(f"- TRENDS: {n} insights collected{note}")
     else:
         parts.append("- TRENDS: not collected yet")
 
@@ -217,14 +222,24 @@ def node_scraper(state: dict) -> dict:
     Output : {"scraper_data": {"source": ..., "data": [...]}}
     """
     existing = state.get("scraper_data", {}).get("data", [])
-    extra    = len(existing)  # demander plus si déjà des données
+    extra    = len(existing)
 
     log.info(f"[node_scraper] Produit: {state['product']} / Marche: {state['market']} "
-             f"(existing={extra}, requesting more)")
-    result   = fetch_scraper(state["product"], state["market"], extra_offset=extra)
-    merged   = _clean_duplicate_results(existing, result, key=lambda r: (r["source"], r["price"]))
-    log.info(f"[node_scraper] {extra} existants + {len(merged['data']) - extra} nouveaux = {len(merged['data'])} total")
-    return {"scraper_data": merged}
+             f"(existing={extra})")
+    result    = fetch_scraper(state["product"], state["market"])
+    merged    = _clean_duplicate_results(existing, result, key=lambda r: (r["source"], r["price"]))
+    merged["data"] = merged["data"][:cfg.max_serp_results]
+    new_count = len(merged["data"]) - extra
+    log.info(f"[node_scraper] {extra} existants + {new_count} nouveaux = {len(merged['data'])} total")
+
+    updates = {"scraper_data": merged}
+    if new_count == 0 and existing:
+        exhausted = list(state.get("exhausted_tools", []))
+        if "scraper" not in exhausted:
+            exhausted.append("scraper")
+            log.info("[node_scraper] Aucun nouveau résultat — outil marqué comme épuisé.")
+        updates["exhausted_tools"] = exhausted
+    return updates
 
 
 # -------------------------------------------------
@@ -241,11 +256,21 @@ def node_sentiment(state: dict) -> dict:
     """
     existing = state.get("sentiment_data", {}).get("data", [])
 
-    log.info(f"[node_sentiment] {state['product']} (existing={len(existing)}, requesting more)")
-    result   = fetch_sentiment(state["product"], extra_offset=len(existing))
+    log.info(f"[node_sentiment] {state['product']} (existing={len(existing)})")
+    result   = fetch_sentiment(state["product"])
     merged   = _clean_duplicate_results(existing, result)
-    log.info(f"[node_sentiment] {len(existing)} existants + {len(merged['data']) - len(existing)} nouveaux = {len(merged['data'])} total")
-    return {"sentiment_data": merged}
+    merged["data"] = merged["data"][:cfg.max_serp_results]
+    new_count = len(merged["data"]) - len(existing)
+    log.info(f"[node_sentiment] {len(existing)} existants + {new_count} nouveaux = {len(merged['data'])} total")
+
+    updates = {"sentiment_data": merged}
+    if new_count == 0 and existing:
+        exhausted = list(state.get("exhausted_tools", []))
+        if "sentiment" not in exhausted:
+            exhausted.append("sentiment")
+            log.info("[node_sentiment] Aucun nouveau résultat — outil marqué comme épuisé.")
+        updates["exhausted_tools"] = exhausted
+    return updates
 
 
 # -------------------------------------------------
@@ -262,11 +287,20 @@ def node_trends(state: dict) -> dict:
     """
     existing = state.get("trends_data", {}).get("data", [])
 
-    log.info(f"[node_trends] {state['product']} (existing={len(existing)}, requesting more)")
-    result   = fetch_trends(state["product"], state["market"], extra_offset=len(existing))
-    merged   = _clean_duplicate_results(existing, result)
-    log.info(f"[node_trends] {len(existing)} existants + {len(merged['data']) - len(existing)} nouveaux = {len(merged['data'])} total")
-    return {"trends_data": merged}
+    log.info(f"[node_trends] {state['product']} (existing={len(existing)})")
+    result    = fetch_trends(state["product"], state["market"])
+    merged    = _clean_duplicate_results(existing, result)
+    new_count = len(merged["data"]) - len(existing)
+    log.info(f"[node_trends] {len(existing)} existants + {new_count} nouveaux = {len(merged['data'])} total")
+
+    updates = {"trends_data": merged}
+    if new_count == 0 and existing:
+        exhausted = list(state.get("exhausted_tools", []))
+        if "trends" not in exhausted:
+            exhausted.append("trends")
+            log.info("[node_trends] Aucun nouveau résultat — outil marqué comme épuisé.")
+        updates["exhausted_tools"] = exhausted
+    return updates
 
 
 # -------------------------------------------------
