@@ -21,8 +21,8 @@ class Config:
     # --- LLM ---
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
 
-    # Modèle Gemini à utiliser
-    gemini_model: str = "gemini-robotics-er-1.5-preview"
+    # Modèle Gemini à utiliser (configurable via .env)
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-robotics-er-1.5-preview")
 
     # --- SerpApi ---
     # Clé API SerpApi pour Google Shopping + résultats organiques

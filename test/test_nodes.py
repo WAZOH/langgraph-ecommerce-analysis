@@ -22,6 +22,7 @@ def base_state() -> dict:
         "prompt":         SAMPLE_PROMPT,
         "product":        SAMPLE_PRODUCT,
         "market":         SAMPLE_MARKET,
+        "market_code":    "CA",
         "next_action":    "",
         "turn":           0,
         "last_reasoning": "",

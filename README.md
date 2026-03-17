@@ -25,16 +25,16 @@ POST /analyze { "prompt": "..." }
 │    │  décide quel tool appeler                   │
 │    │  évalue après chaque appel                  │
 │    │                                             │
-│    ├──► tool 1: node_scraper                     │
+│    ├──► outil 1: node_scraper (prix)             │
 │    │         └──► node_orchestrator              │
 │    │                                             │
-│    ├──► node_sentiment (SerpApi Reviews)         │
+│    ├──► outil 2: node_sentiment (SerpApi Reviews)│
 │    │         └──► node_orchestrator              │
 │    │                                             │
-│    ├──► node_trends    (SerpApi Trends)          │
+│    ├──► outil 3: node_trends (SerpApi Trends)    │
 │    │         └──► node_orchestrator              │
 │    │                                             │
-│    └──► node_report    (Gemini)  ──► END         │
+│    └──► outil 4: node_report (Gemini)  ──► END   │
 └──────────────────────────────────────────────────┘
         │
         ▼
@@ -63,7 +63,7 @@ Trois raisons concrètes :
 ## Fichiers
 
 ```
-market-agent/
+langgraph-ecommerce-analysis/
 ├── app/
 │   ├── config.py        # Variables d'environnement (os.getenv + .env)
 │   ├── tools.py         # Collecte données : SerpApi + mocks
@@ -76,6 +76,7 @@ market-agent/
 │   ├── test_nodes.py    # Tests des nodes individuellement
 │   ├── test_pipeline.py # Tests du pipeline complet
 │   └── test_api.py      # Tests des routes HTTP
+├── index.html           # Interface utilisateur (SSE streaming)
 ├── .env.example
 ├── Dockerfile
 ├── docker-compose.yml
@@ -100,8 +101,8 @@ market-agent/
 ### Étape 1 — Cloner et configurer
 
 ```bash
-git clone https://github.com/your-username/market-agent.git
-cd market-agent
+git clone https://github.com/WAZOH/langgraph-ecommerce-analysis.git
+cd langgraph-ecommerce-analysis
 cp .env.example .env
 # Remplir les clés API dans .env
 ```
@@ -114,7 +115,7 @@ S'assurer que Docker Desktop est lancé. Si non installé, télécharger sur [do
 docker compose up --build
 ```
 
-Il y a 2 manières de tester le pipeline:
+Il y a 2 manières d'utiliser l'app:
 1- Option 1:
 Aller directement sur `http://localhost:8000` pour voir l'interface utilisateur.
 2- Option 2:
@@ -146,6 +147,13 @@ open http://localhost:8000/docs
 ### Sans Docker (développement local)
 
 ```bash
+# Windows
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+# Unix / Mac
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
@@ -154,9 +162,14 @@ uvicorn app.main:app --reload
 ### Tests
 
 ```bash
+# Installer et activer le venv (si pas déjà fait)
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Unix / Mac
+pip install -r requirements.txt
+
 # Tous les tests (pas de clé API requise — fonctionne en mode mock)
 python -m pytest test/ -v
-```
 
 # Par module
 python -m pytest test/test_tools.py -v
@@ -190,33 +203,9 @@ qui ont la même structure que les vraies APIs.
 
 ## Exemple de rapport généré
 
-```json
-{
-  "prompt": "Analyse le marché canadien pour les Nike Air Max 90...",
-  "product": "Nike Air Max 90",
-  "market": "Canada",
-  "generated_at": "2026-03-16T10:00:00+00:00",
-  "report_source": "gemini",
-  "tools_used": ["scraper", "trends"],
-  "turns": 2,
-  "reasoning_log": [
-    { "turn": 1, "action": "node_scraper",  "reason": "Besoin des prix actuels pour évaluer la rentabilité" },
-    { "turn": 2, "action": "node_trends",   "reason": "Besoin des tendances pour évaluer le timing" },
-    { "turn": 3, "action": "node_report",   "reason": "Données suffisantes pour répondre à la demande" }
-  ],
-  "insights": {
-    "intent": "market_opportunity",
-    "executive_summary": "Le marché canadien des Nike Air Max 90 est compétitif mais rentable...",
-    "market_score": 7,
-    "market_score_explanation": "Demande stable, marges correctes sur les éditions rares.",
-    "pricing": { "min": 134.99, "max": 174.99, "average": 162.0, "recommendation": 157.14 },
-    "trends": { "momentum": "rising", "popularity_score": 7, "peak_season": "Q4" },
-    "opportunities": ["Éditions limitées à forte marge", "Marché revendeurs actif"],
-    "risks": ["Concurrence Amazon/Foot Locker sur les prix", "Stock limité"],
-    "recommendations": ["Cibler les coloris rares", "Lancer en septembre avant la peak season"]
-  }
-}
-```
+Le rapport complet est disponible dans [`example_report.json`](example_report.json).
+
+Il illustre une analyse complète du marché canadien pour l'iPhone 17 Pro Max 256 GB avec les 3 outils (scraper + sentiment + trends), incluant le `reasoning_log` des décisions de l'orchestrateur, les données brutes collectées, et les insights Gemini (sentiment, competitive analysis, trends, opportunités, risques, recommandations).
 
 ---
 
