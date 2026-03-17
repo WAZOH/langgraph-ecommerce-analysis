@@ -1,23 +1,6 @@
 """
 Assemble le graphe LangGraph avec une boucle de reflexion (ReAct).
 
-Flux :
-        START
-            |
-      node_orchestrator  ← (tour 0 : extrait produit/marché)
-            |
-      route_next  → node_scraper (toujours en premier, imposé par le prompt Gemini)
-                          |
-                    log_reasoning
-                          |
-                    node_orchestrator  ← (tours suivants : évalue, décide)
-                          |
-                    route_next  → node_scraper | node_sentiment | node_trends | node_report
-                                        |                |             |            |
-                                  log_reasoning    log_reasoning   log_reasoning   END
-                                        |                |             |            
-                                  node_orchestrator ← ← ← ← ← ← ← ← ← ←
-
 L'orchestrateur tourne en boucle jusqu'à decider "node_report".
 Max 6 tours (Paramètre MAX_TURNS configuré dans .env) pour éviter une boucle infinie.
 
