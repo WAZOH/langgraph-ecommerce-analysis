@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 # SHARED  (SerpApi Google Shopping — cached)
 # -------------------------------------------------
 
-# Décorateur Least Recently used = Efface les résultats les plus anciens du cache. 
+# Décorateur Least Recently used (lru_cache) = Efface les résultats les plus anciens du cache. 
 # Garde en mémoire les résultats des 32 dernières combinaisons d'arguments différentes.
 # L'idée est de réutiliser les résultats de Google Shopping entre scraper et reviews, qui font tous les deux appel à la même API 
 # et peuvent être lancés dans n'importe quel ordre selon la décision de l'orchestrateur.

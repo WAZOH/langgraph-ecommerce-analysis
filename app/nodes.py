@@ -1,6 +1,4 @@
 """
-nodes.py
---------
 Les nodes du graphe LangGraph :
 
   node_orchestrator  — cerveau de l'agent : extrait le contexte, decide
@@ -82,19 +80,11 @@ def node_orchestrator(state: dict) -> dict:
             update = {
                 "product":          decision.get("product", state.get("product", "")),
                 "market":           market,
-                "market_code":        decision.get("market_code", state.get("market_code", _fallback_market_code(market))),
+                "market_code":      decision.get("market_code", state.get("market_code", _fallback_market_code(market))),
                 "next_action":      decision["next_action"],
                 "last_reasoning":   decision["last_reasoning"],
                 "turn":             turn + 1,
             }
-            # Forcer le remplissage du reasoning_log à chaque tour pour tracer les décisions 
-            # même à la fin quand next_action est node_report
-            if decision["next_action"] == "node_report":
-                update["reasoning_log"] = state.get("reasoning_log", []) + [{
-                    "turn":   turn + 1,
-                    "action": decision["next_action"],
-                    "reason": decision["last_reasoning"],
-                }]
             return update
         except Exception as e:
             log.warning(f"[node_orchestrator] Gemini failed ({e}), fallback.")
@@ -108,22 +98,14 @@ def node_orchestrator(state: dict) -> dict:
     fallback_plan = ["node_scraper", "node_sentiment", "node_trends", "node_report"]
     next_action = fallback_plan[min(turn, len(fallback_plan) - 1)]
     reasoning = f"Fallback plan — step {turn + 1}"
-    update = {
+    return {
         "product":        product,
         "market":         market,
-        "market_code":      market_code,
+        "market_code":    market_code,
         "next_action":    next_action,
         "last_reasoning": reasoning,
         "turn":           turn + 1,
     }
-    # Forcer reasoning_log à se remplir même en fallback pour tracer les décisions
-    if next_action == "node_report":
-        update["reasoning_log"] = state.get("reasoning_log", []) + [{
-            "turn":   turn + 1,
-            "action": next_action,
-            "reason": reasoning,
-        }]
-    return update
 
 
 def _gemini_orchestrate(state: dict) -> dict:

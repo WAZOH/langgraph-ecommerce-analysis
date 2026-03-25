@@ -117,17 +117,16 @@ def build_graph():
     # Entree : toujours par l'orchestrateur
     graph.add_edge(START, "node_orchestrator")
 
-    # Apres l'orchestrateur : routing selon next_action
+    # Apres l'orchestrateur : toujours log la decision, puis routing selon next_action
+    graph.add_edge("node_orchestrator", "log_reasoning")
     graph.add_conditional_edges(
-        "node_orchestrator",
+        "log_reasoning",
         route_next,
     )
 
-    # Apres chaque tool : on log la decision puis on reboucle vers node_orchestrator pour la prochaine decision
+    # Apres chaque tool : reboucle directement vers node_orchestrator
     for tool_node in ["node_scraper", "node_sentiment", "node_trends"]:
-        graph.add_edge(tool_node, "log_reasoning")
-
-    graph.add_edge("log_reasoning", "node_orchestrator")
+        graph.add_edge(tool_node, "node_orchestrator")
 
     # Sortie : node_report vers END
     graph.add_edge("node_report", END)

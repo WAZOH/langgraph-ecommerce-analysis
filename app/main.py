@@ -188,11 +188,11 @@ def analyze_stream(request: AnalyzeRequest):
 @app.post("/analyze", response_model=AnalyzeResponse, tags=["Analysis"])
 def analyze(request: AnalyzeRequest):
     """
-    Lance une analyse de marche complète à partir d'un prompt libre.
+    Lance une analyse de marché complète à partir d'un prompt libre.
 
     L'agent va :
       1. Extraire le produit et le marché/pays depuis le prompt
-      2. Decider quels outils sont nécessaires selon la demande
+      2. Décider quels outils sont nécessaires selon la demande
       3. Appeler les outils un par un, évaluer apràs chaque appel
       4. Génerer un rapport strategique adapté à la demande
     """
