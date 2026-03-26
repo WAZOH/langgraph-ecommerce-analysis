@@ -276,6 +276,8 @@ sentry_sdk.init(dsn='https://xxx@sentry.io/xxx')
 
 **Pour 100+ analyses simultanées**, l'API doit devenir asynchrone :
 
+Un pool de workers Celery consomme une queue Redis. Chaque worker fait tourner un graphe LangGraph indépendant.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  ÉTAPE 1 — Client envoie POST /analyze                              │
@@ -343,8 +345,6 @@ Résultat avec 3 workers × 4 concurrency = 12 analyses en parallèle :
   Sans Celery : 100 clients × 15s = 25 minutes d'attente
   Avec Celery : 100 / 12 = 9 batches × 15s = ~2 minutes d'attente
 ```
-
-Un pool de workers Celery consomme une queue Redis. Chaque worker fait tourner un graphe LangGraph indépendant.
 
 
 **Optimisation des coûts LLM :**
