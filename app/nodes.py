@@ -340,7 +340,7 @@ def _gemini_insights(state: dict) -> dict:
 
 def _build_dynamic_report_prompt(state: dict) -> str:
     """
-    Construit un prompt de rapport adapte dynamiquement à l'intention de l'utilisateur afin d'aider
+    Construit un prompt de rapport adapté dynamiquement à l'intention de l'utilisateur afin d'aider
     Gemini à comprendre ce que l'utilisateur a réellement demandé.
 
     Intentions détectées :

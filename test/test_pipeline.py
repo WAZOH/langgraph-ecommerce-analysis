@@ -21,14 +21,19 @@ def report():
 
 
 def test_pipeline_extracts_product_and_market(report):
+    # Vérifie que l'orchestrateur a bien extrait le produit et le marché depuis le prompt.
+    # Les deux champs ne doivent pas être vides après le pipeline.
     assert report["product"] != "" and report["market"] != ""
 
 
 def test_pipeline_used_at_least_one_tool(report):
+    # Vérifie que le pipeline a appelé au moins un outil de collecte (scraper, sentiment ou trends).
+    # Un rapport généré sans aucun outil serait basé sur rien.
     assert len(report["tools_used"]) > 0
 
 
 def test_pipeline_insights_are_complete(report):
-    # Les blocs obligatoirs du rapport doivent toujours être présents "executive_summary", "market_score", "recommendations"
+    # Vérifie que les 3 blocs obligatoires sont toujours présents dans les insights,
+    # peu importe l'intention détectée ou les outils utilisés.
     for key in ("executive_summary", "market_score", "recommendations"):
         assert key in report["insights"]
