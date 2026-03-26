@@ -266,13 +266,15 @@ Langfuse enregistre le temps d'exécution de chaque node pour chaque analyse. Le
 (Pour tracker les bugs dans le pipeline en entier)
 
 Sentry envoie une alerte dès qu'une erreur survient dans l'app (crash FastAPI, erreur SerpApi, erreur Gemini). Intégration en 2 lignes :
-
-
+```py
+import sentry_sdk
+sentry_sdk.init(dsn='https://xxx@sentry.io/xxx')
+```
 ---
 
 ## Question 6 - Scaling et optimisation
 
-**Pour 100+ analyses simultanées**, l'API doit devenir  asynchrone :
+**Pour 100+ analyses simultanées**, l'API doit devenir asynchrone :
 
 ```
 POST /analyze   -> retourne { job_1 } immédiatement
@@ -333,6 +335,16 @@ def node_orchestrator(state):
 
 **LLM as Judge :**
 Idem Réponse à la question 5. Après chaque rapport généré par `node_report`, un second appel Gemini évalue automatiquement la qualité du rapport. Il retourne un score 1-5 sur 3 critères : complétude, cohérence, et pertinence des recommandations. Le score est sauvegardé en base de données. Si la moyenne descend sous 3/5 sur les 100 dernières analyses, les prompts sont révisés.
+
+Complétude — "Est-ce que tout ce qui devrait être là est là ?"
+La question à se poser : selon l'intention détectée, quels blocs sont obligatoires ?
+
+Cohérence — "Les conclusions sont-elles logiques par rapport aux données ?"
+La question à se poser : si je lis les données brutes, est-ce que le rapport les contredit ?
+
+Pertinence — "Le rapport répond-il à la VRAIE question ?"
+La question à se poser : si le client relit son prompt et le rapport, a-t-il sa réponse ?
+
 
 ```
 node_report génère le rapport
