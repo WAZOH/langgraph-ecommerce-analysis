@@ -277,15 +277,71 @@ sentry_sdk.init(dsn='https://xxx@sentry.io/xxx')
 **Pour 100+ analyses simultanées**, l'API doit devenir asynchrone :
 
 ```
-POST /analyze   -> retourne { job_1 } immédiatement
-POST /analyze   -> retourne { job_2 } immédiatement
-...
-POST /analyze   -> retourne { job_100 } immédiatement
+┌─────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 1 — Client envoie POST /analyze                              │
+│                                                                     │
+│  Client  ──►  FastAPI                                               │
+│               Pydantic valide le prompt (min 10 chars)              │
+│               run_analysis_task.delay(prompt)                       │
+│               retourne {job_id: "abc-123"} en < 1ms                 │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ .delay() écrit dans Redis
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 2 — Tâche Celery stockée dans Redis                          │
+│                                                                     │
+│  Redis                                                              │
+│  ├── clé "celery" (liste FIFO)                                      │
+│  │   └── [{id: "abc-123", task: "run_analysis_task",                │
+│  │         args: ["Analyse Nike Air Max Canada"]}]                  │
+│  │                                                                  │
+│  └── clé "celery-task-meta-abc-123"                                 │
+│      └── {status: "PENDING"}                                        │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ BLPOP — worker lit la tâche
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 3 — Worker Celery exécute la tâche                           │
+│                                                                     │
+│  Worker (processus Python séparé)                                   │
+│  ├── Redis SET celery-task-meta-abc-123 {status: "STARTED"}         │
+│  └── run_analysis("Analyse Nike Air Max Canada")                    │
+│      │                                                              │
+│      ├── node_orchestrator → Gemini → product/market extraits       │
+│      ├── node_scraper      → SerpApi → 20 prix collectés            │
+│      │   └── Cache Redis : GET shopping:Nike:Canada → MISS          │
+│      │                     SET shopping:Nike:Canada TTL 1h          │
+│      ├── node_sentiment    → SerpApi → cache HIT < 1ms              │
+│      ├── node_trends       → SerpApi → 3 insights                   │
+│      └── node_report       → Gemini → rapport JSON final            │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ résultat sauvegardé
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 4 — Résultat sauvegardé dans Redis                           │
+│                                                                     │
+│  Redis SET celery-task-meta-abc-123                                 │
+│  {                                                                  │
+│      status:    "SUCCESS",                                          │
+│      result:    {rapport complet...},                               │
+│      date_done: "2025-01-01T12:00:15Z"                              │
+│  }                                                                  │
+│  EXPIRE celery-task-meta-abc-123 3600  ← TTL 1h                     │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ client poll
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 5 — Client récupère le résultat                              │
+│                                                                     │
+│  Client  ──►  GET /jobs/abc-123                                     │
+│               FastAPI lit Redis GET celery-task-meta-abc-123        │
+│               retourne {status: "complete", report: {...}}          │
+└─────────────────────────────────────────────────────────────────────┘
 
-GET  /jobs/{1} -> poll pour avoir le résultat
-GET  /jobs/{2} -> poll pour avoir le résultat
-...
-GET  /jobs/{100} -> poll pour avoir le résultat
+Résultat avec 3 workers × 4 concurrency = 12 analyses en parallèle :
+
+  Sans Celery : 100 clients × 15s = 25 minutes d'attente
+  Avec Celery : 100 / 12 = 9 batches × 15s = ~2 minutes d'attente
 ```
 
 Un pool de workers Celery consomme une queue Redis. Chaque worker fait tourner un graphe LangGraph indépendant.
